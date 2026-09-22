@@ -1,0 +1,22 @@
+# One sentence per line. Lines starting with # are ignored.
+# Mixed register typical for YouTube voice-over: tech, casual, numbers, names, questions.
+Dzień dobry, dzisiaj pokażę wam, jak w kilka minut uruchomić własny serwer w domu.
+Zanim zaczniemy, upewnij się, że masz zainstalowaną najnowszą wersję sterowników.
+To naprawdę nie jest takie trudne, jak się wydaje.
+Procesor ma osiem rdzeni i szesnaście wątków, a taktowanie sięga pięciu gigaherców.
+W 2024 roku firma sprzedała ponad trzy miliony sztuk tego urządzenia.
+Czy to ma sens? Moim zdaniem tak, ale nie dla każdego.
+Kabel USB-C podłączamy do portu z lewej strony, obok gniazda HDMI.
+Uwaga! Nigdy nie odłączaj zasilania podczas aktualizacji oprogramowania.
+Najpierw otwieramy terminal, wpisujemy polecenie i naciskamy Enter.
+Szczerze mówiąc, spodziewałem się czegoś zupełnie innego.
+Temperatura na zewnątrz spadła do minus dwunastu stopni Celsjusza.
+Elon Musk ogłosił, że nowa wersja pojawi się jeszcze w tym kwartale.
+Jeżeli zobaczysz komunikat o błędzie, po prostu uruchom program ponownie.
+Wrocław, Gdańsk i Rzeszów to miasta, które odwiedziłem w zeszłym miesiącu.
+No dobra, przejdźmy do najciekawszej części, czyli testów wydajności.
+Wynik to dwadzieścia trzy przecinek pięć klatki na sekundę, czyli całkiem nieźle.
+Dziękuję za oglądanie, do zobaczenia w następnym odcinku!
+Mikrokontroler STM32 obsługuje magistralę CAN oraz interfejs Ethernet.
+Nie wiem, czy to zadziała, ale spróbujmy.
+Pamiętaj: kopia zapasowa to nie luksus, to konieczność.

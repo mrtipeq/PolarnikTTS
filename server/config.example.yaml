@@ -1,0 +1,102 @@
+# PolarnikTTS engine server configuration.
+# Copy to config.yaml and edit. Paths are relative to the server/ directory.
+
+server:
+  host: 127.0.0.1        # use 0.0.0.0 to expose the server to other machines on your LAN
+  port: 8765
+  token: ""              # optional bearer token; the extension sends it as "Authorization: Bearer <token>"
+  cache_dir: cache       # synthesized audio cache (safe to delete)
+  models_dir: models     # downloaded models (Piper voices, HF cache for Chatterbox/XTTS)
+  log_level: info
+  log_file: logs/server.log   # rotating log file (used also when started without a console)
+  default_engine: edge_tts    # engine used when the extension asks for "server default"
+
+# TTS engines. Every engine has `enabled`; the server reports which enabled engines are
+# actually ready (dependencies installed, models present, key set, CUDA available).
+engines:
+  test_tone:
+    enabled: true        # synthetic beep, no dependencies - for pipeline tests only
+
+  edge_tts:
+    enabled: true
+    default_voice: pl-PL-ZofiaNeural     # also: pl-PL-MarekNeural
+    # Tune prosody: edge-tts accepts rate/pitch offsets, e.g. "+5%" / "-2Hz"
+    rate: "+0%"
+    pitch: "+0Hz"
+
+  piper:
+    enabled: true
+    voices_dir: models/piper
+    default_voice: pl_PL-gosia-medium    # also: pl_PL-darkman-medium, pl_PL-mc_speech-medium
+
+  chatterbox:
+    enabled: false
+    device: auto                          # auto | cuda | cpu
+    # Optional 5-15 s WAV with the voice to clone. Empty = model's built-in voice.
+    reference_audio: ""
+    exaggeration: 0.5
+    cfg_weight: 0.5
+
+  xtts:
+    enabled: false
+    device: auto
+    default_voice: "Ana Florence"         # built-in speaker name, or set speaker_wav
+    speaker_wav: ""
+
+  openai_tts:
+    enabled: false
+    api_key: ""                           # empty = reuse translators.openai.api_key
+    model_id: gpt-4o-mini-tts
+    default_voice: marin
+
+  gemini_tts:
+    enabled: false
+    api_key: ""                           # empty = reuse translators.gemini.api_key
+    model_id: gemini-2.5-flash-preview-tts
+    default_voice: Kore
+
+  elevenlabs:
+    enabled: false
+    api_key: ""
+    model_id: eleven_flash_v2_5           # or eleven_v3, eleven_multilingual_v2
+    default_voice: ""                     # voice_id; empty = first voice of your account
+    output_format: mp3_44100_128
+
+# Translation providers. `default` names the provider used when the extension
+# does not request one explicitly. "youtube" means: use YouTube's own auto-translate
+# (handled in the extension, the server is not involved).
+translators:
+  default: youtube
+
+  openai:
+    type: openai_compat
+    enabled: false
+    base_url: https://api.openai.com/v1
+    api_key: ""
+    model: gpt-4.1-mini
+
+  gemini:
+    type: openai_compat
+    enabled: false
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    api_key: ""
+    model: gemini-2.5-flash
+
+  ollama:
+    type: openai_compat
+    enabled: false
+    base_url: http://127.0.0.1:11434/v1
+    api_key: ollama
+    model: SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M
+
+  anthropic:
+    type: anthropic
+    enabled: false
+    api_key: ""
+    model: claude-haiku-4-5
+
+  deepl:
+    type: deepl
+    enabled: false
+    api_key: ""
+    base_url: https://api-free.deepl.com   # https://api.deepl.com for paid plans

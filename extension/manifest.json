@@ -1,0 +1,83 @@
+{
+  "manifest_version": 3,
+  "name": "PolarnikTTS",
+  "version": "0.6.2",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu6loj/ktnX9QTq0oYIo/LWZru4JtGJ3KEidKGKJkbOoxV2ZrqYLD66YgW7PvfQFjFSOVT5xdseDYBlFgzOjEoDWINvHjTdSF2aNw5T5cNvXMBU+ZtEMZFNnZoaquAzfXfEVrzfCI26lRGb0vv7DKmEUEu3XuabE5TzlVCLpxoITI9y2duQI2NMd71qxi1igkOCIisrCrmnhEVhu0HYN7PhKoiiPkfLtZ9hBYOHh8kOK0W0/Xqu1wqWJ6aro1lwDVkJ8lnrkWyGzJ1QVFyq91iekb5PeHlPD3VxSA0dnXU6tfloZfSDrnlhFfHTPRk1r/zCa97ADNpcr4PAPh4rD4dQIDAQAB",
+  "description": "Polski lektor do napisów na YouTube: tłumaczy napisy i czyta je wybranym silnikiem TTS (lokalnym lub chmurowym).",
+  "author": "MrTip (Darek) – Tipson",
+  "homepage_url": "https://tipson.pl",
+  "default_locale": "pl",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    },
+    "default_title": "PolarnikTTS",
+    "default_popup": "popup/popup.html"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background/sw.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content/page.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "lib/*.js",
+        "content/captions.js",
+        "content/panel.js"
+      ],
+      "matches": [
+        "https://www.youtube.com/*"
+      ]
+    }
+  ],
+  "permissions": [
+    "storage",
+    "webRequest",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
+}

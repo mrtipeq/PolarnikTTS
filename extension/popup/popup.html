@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>PolarnikTTS</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 12px 14px; width: 280px; font-size: 13px; }
+    h1 { font-size: 15px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 6px 0; }
+    .row > span:first-child { white-space: nowrap; }
+    .row > span:last-child { text-align: right; overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
+    .muted { opacity: .7; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #999; margin-right: 6px; }
+    .dot.ok { background: #2a8; } .dot.err { background: #c33; }
+    button { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid #8884; background: transparent; color: inherit; cursor: pointer; }
+    label.switch { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1><img src="../icons/icon16.png" alt="" width="16" height="16"> PolarnikTTS</h1>
+  <div class="row">
+    <label class="switch"><input id="enabled" type="checkbox"> Lektor włączony</label>
+  </div>
+  <div class="row"><span><span id="serverDot" class="dot"></span>Serwer</span><span id="serverText" class="muted">…</span></div>
+  <div class="row" id="startRow" hidden><span class="muted" id="startText"></span><button id="btnStart" type="button">Uruchom serwer</button></div>
+  <div class="row"><span><span id="capDot" class="dot"></span>Napisy na tej karcie</span><span id="capText" class="muted">…</span></div>
+  <div class="row"><span><span id="lekDot" class="dot"></span>Lektor</span><span id="lekText" class="muted">…</span></div>
+  <div class="row" style="margin-top:10px">
+    <span class="muted" id="engineText"></span>
+    <button id="btnOptions" type="button">Ustawienia</button>
+  </div>
+  <div class="row muted" style="margin-top:8px;font-size:11px"><span id="aboutLine"></span><a href="https://tipson.pl" target="_blank" rel="noopener" style="color:inherit">tipson.pl</a></div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

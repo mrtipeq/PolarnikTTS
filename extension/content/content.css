@@ -1,0 +1,44 @@
+/* Player-bar button of PolarnikTTS */
+.polarnik-btn { color: #fff; opacity: .9; display: inline-flex !important; align-items: center; justify-content: center; vertical-align: top; }
+.polarnik-btn svg { width: 26px; height: 26px; margin: 0; display: block; flex: none; }
+.polarnik-btn .polarnik-dot { fill: #888; }
+.polarnik-btn[data-status="off"] { opacity: .45; }
+.polarnik-btn[data-status="idle"] .polarnik-dot { fill: #9aa; }
+.polarnik-btn[data-status="loading"] .polarnik-dot { fill: #fc3; animation: polarnik-pulse 1s infinite; }
+.polarnik-btn[data-status="working"] .polarnik-dot { fill: #3c6; }
+.polarnik-btn[data-status="nocaptions"] .polarnik-dot { fill: #59f; }
+.polarnik-btn[data-status="error"] .polarnik-dot { fill: #e33; }
+@keyframes polarnik-pulse { 50% { opacity: .3; } }
+
+/* In-player settings panel, styled after YouTube's own settings menu */
+.polarnik-panel {
+  position: absolute; right: 12px; bottom: 60px; z-index: 70;
+  width: 380px; max-width: calc(100% - 24px); max-height: calc(100% - 80px); overflow-y: auto;
+  background: rgba(28, 28, 28, .92); color: #eee; border-radius: 12px;
+  font: 13px/1.4 Roboto, Arial, sans-serif; box-shadow: 0 8px 30px rgba(0,0,0,.5);
+  padding: 6px 0; user-select: none;
+}
+.polarnik-panel[hidden] { display: none; }
+.polarnik-row { display: flex; align-items: center; gap: 10px; padding: 9px 18px; min-height: 22px; }
+.polarnik-row-toggle, .polarnik-row-choice, .polarnik-row-item, .polarnik-head { cursor: pointer; }
+.polarnik-row-toggle:hover, .polarnik-row-choice:hover, .polarnik-row-item:hover, .polarnik-head:hover { background: rgba(255,255,255,.1); }
+.polarnik-label { flex: 1; font-weight: 500; }
+.polarnik-value { color: #bbb; white-space: nowrap; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+.polarnik-chevron, .polarnik-back { color: #bbb; font-size: 18px; line-height: 1; }
+.polarnik-head { border-bottom: 1px solid rgba(255,255,255,.15); margin-bottom: 4px; }
+.polarnik-row-range { flex-wrap: wrap; row-gap: 4px; }
+.polarnik-row-range input[type=range] { flex-basis: 100%; width: 100%; margin: 0; accent-color: #f00; cursor: pointer; }
+.polarnik-switch { width: 36px; height: 14px; border-radius: 7px; background: #666; position: relative; transition: background .15s; }
+.polarnik-switch .polarnik-knob { position: absolute; top: -3px; left: -1px; width: 20px; height: 20px; border-radius: 50%; background: #bbb; transition: left .15s, background .15s; }
+.polarnik-switch.on { background: #a00; }
+.polarnik-switch.on .polarnik-knob { left: 17px; background: #f00; }
+.polarnik-check { width: 16px; color: #fff; }
+.polarnik-row-item.disabled { opacity: .4; cursor: default; }
+.polarnik-note { color: #999; font-size: 11px; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.polarnik-empty { color: #999; }
+.polarnik-foot { display: flex; justify-content: space-between; padding: 8px 18px 4px; color: #999; font-size: 11px; border-top: 1px solid rgba(255,255,255,.15); margin-top: 4px; }
+.polarnik-foot a { color: #ccc; }
+.polarnik-foot { gap: 10px; align-items: center; }
+.polarnik-foot .polarnik-server-status { flex: 1; }
+.polarnik-start { font: inherit; font-size: 12px; color: #fff; background: #c00; border: 0; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
+.polarnik-start:hover { background: #e00; }

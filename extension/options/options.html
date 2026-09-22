@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <title>PolarnikTTS – ustawienia</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/icon48.png" alt="" width="40" height="40">
+    <div>
+      <h1>PolarnikTTS</h1>
+      <p class="muted">Polski lektor do napisów na YouTube – ustawienia</p>
+    </div>
+  </header>
+
+  <section>
+    <h2>Serwer silników</h2>
+    <p class="muted">Serwer PolarnikTTS może działać na tym komputerze albo na innym w sieci lokalnej (np. na maszynie z GPU).</p>
+    <div class="row">
+      <label for="serverUrl">Adres serwera</label>
+      <input id="serverUrl" type="url" placeholder="http://127.0.0.1:8765" spellcheck="false">
+    </div>
+    <div class="row">
+      <label for="serverToken">Token (opcjonalnie)</label>
+      <input id="serverToken" type="password" placeholder="pusty, jeśli serwer nie wymaga" spellcheck="false">
+    </div>
+    <div class="row">
+      <label></label>
+      <div>
+        <button id="btnConnect" type="button">Połącz i pobierz listę silników</button>
+        <button id="btnStart" type="button" class="primary hidden">Uruchom serwer</button>
+        <button id="btnStop" type="button" class="hidden">Zatrzymaj serwer</button>
+        <span id="serverStatus" class="status"></span>
+      </div>
+    </div>
+    <div id="serverInfo" class="info hidden"></div>
+  </section>
+
+  <section>
+    <h2>Głos</h2>
+    <div class="row">
+      <label for="engine">Silnik TTS</label>
+      <select id="engine"><option value="">(domyślny serwera)</option></select>
+    </div>
+    <div class="row">
+      <label for="voice">Głos</label>
+      <select id="voice"><option value="">(domyślny silnika)</option></select>
+    </div>
+    <div class="row">
+      <label for="speed">Tempo <output id="speedOut">1.00</output>×</label>
+      <input id="speed" type="range" min="0.7" max="1.5" step="0.05" value="1">
+    </div>
+    <div class="row">
+      <label for="testText">Zdanie testowe</label>
+      <textarea id="testText" rows="2">Dzień dobry, to jest próba głosu w rozszerzeniu Polarnik Te Te eS. Czy brzmi naturalnie?</textarea>
+    </div>
+    <div class="row">
+      <label></label>
+      <div>
+        <button id="btnTest" type="button">Odsłuchaj</button>
+        <span id="testStatus" class="status"></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Silniki i głosy</h2>
+    <div id="manageRoot"><p class="muted">Połącz się z serwerem, aby zarządzać silnikami.</p></div>
+  </section>
+
+  <section>
+    <h2>Tłumaczenie</h2>
+    <div class="row">
+      <label for="translator">Tłumacz napisów</label>
+      <select id="translator"><option value="youtube">YouTube (automatyczne tłumaczenie)</option></select>
+    </div>
+    <p class="muted">Tłumacze LLM odtwarzają interpunkcję i granice zdań – dopiero to daje lektorowi naturalną intonację. Włączasz je i wpisujesz klucze w sekcji „Silniki i głosy” powyżej.</p>
+  </section>
+
+  <section>
+    <h2>Odtwarzanie</h2>
+    <div class="row">
+      <label for="voiceVolume">Głośność lektora <output id="voiceVolumeOut">100</output>%</label>
+      <input id="voiceVolume" type="range" min="0" max="1" step="0.05" value="1">
+    </div>
+    <div class="row">
+      <label for="duckingDb">Ściszenie oryginału <output id="duckingOut">-12</output> dB</label>
+      <input id="duckingDb" type="range" min="-40" max="0" step="1" value="-12">
+    </div>
+    <div class="row">
+      <label for="maxRate">Maks. przyspieszenie dopasowania <output id="maxRateOut">1.35</output>×</label>
+      <input id="maxRate" type="range" min="1" max="1.6" step="0.05" value="1.35">
+    </div>
+    <div class="row">
+      <label for="lagMode">Gdy lektor nie nadąża</label>
+      <select id="lagMode">
+        <option value="speed">Przyspiesz lektora (do maks. przyspieszenia)</option>
+        <option value="video">Zwolnij film, aż lektor dogoni</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="offsetMs">Przesunięcie lektora <output id="offsetOut">0</output> ms</label>
+      <input id="offsetMs" type="range" min="-2000" max="2000" step="50" value="0">
+    </div>
+    <div class="row">
+      <label for="lookaheadS">Wyprzedzenie syntezy <output id="lookaheadOut">30</output> s</label>
+      <input id="lookaheadS" type="range" min="10" max="90" step="5" value="30">
+    </div>
+  </section>
+
+  <section>
+    <h2>Przenoszenie ustawień</h2>
+    <p class="muted">Eksport zapisuje do jednego pliku ustawienia rozszerzenia, konfigurację serwera (silniki, tłumacze, klucze API) i próbki głosów. Na drugim komputerze: zainstaluj PolarnikTTS, uruchom serwer i zaimportuj plik. Plik zawiera klucze API – traktuj go jak hasło.</p>
+    <div class="row">
+      <label></label>
+      <div>
+        <button id="btnExport" type="button">Eksportuj ustawienia…</button>
+        <button id="btnImport" type="button">Importuj ustawienia…</button>
+        <input id="importFile" type="file" accept=".json,application/json" hidden>
+        <span id="transferStatus" class="status"></span>
+      </div>
+    </div>
+  </section>
+
+  <section id="about">
+    <h2>O programie</h2>
+    <div class="about">
+      <img src="../icons/icon128.png" alt="" width="64" height="64">
+      <div>
+        <p><b>PolarnikTTS</b> <span id="aboutVersion" class="muted"></span></p>
+        <p>Polski lektor do YouTube – tłumaczy napisy i czyta je w czasie rzeczywistym wybranym silnikiem: lokalnym (GPU/CPU) albo chmurowym, z klonowaniem głosu z własnej próbki.</p>
+        <p>Autor: <b>MrTip (Darek)</b> z <a href="https://tipson.pl" target="_blank" rel="noopener">Tipson</a> · <a href="https://tipson.pl" target="_blank" rel="noopener">tipson.pl</a> · <a href="https://github.com/mrtipeq/PolarnikTTS" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/mrtipeq/PolarnikTTS/issues" target="_blank" rel="noopener">zgłoś problem</a></p>
+        <p>Zaprojektowane i zbudowane w całości pod komendą <b>Claude Fable 5.1 (High)</b> firmy Anthropic – od analizy pierwowzoru, przez architekturę i kod serwera oraz rozszerzenia, po testy – według pomysłu i wymagań MrTipa.</p>
+        <p class="muted" id="aboutStats"></p>
+        <p class="muted">Licencja MIT. Rozszerzenie: Manifest V3, bez bibliotek i bez telemetrii – nic nie jest wysyłane nigdzie poza serwerem PolarnikTTS i dostawcami, których sam włączysz. Serwer: Python + FastAPI, wtyczki silników (Microsoft Edge, Piper, Chatterbox, XTTS-v2, OpenAI, Gemini, ElevenLabs) i tłumaczy (OpenAI, Gemini, Ollama/Bielik, Claude, DeepL).</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <button id="btnSave" type="button" class="primary">Zapisz</button>
+    <span id="saveStatus" class="status"></span>
+  </footer>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

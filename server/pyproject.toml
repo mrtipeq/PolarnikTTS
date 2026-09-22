@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polarnik-server"
+version = "0.3.8"
+description = "PolarnikTTS engine server: pluggable Polish TTS and translation backends for the PolarnikTTS Chrome extension"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "numpy>=1.24",
+    "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+# Cloud, no GPU needed (unofficial Microsoft Edge neural voices)
+edge = ["edge-tts>=7.0"]
+# Fast CPU engine, lower quality; models downloaded with scripts/download_models.py
+piper = ["piper-tts>=1.3"]
+# Chatterbox and XTTS are NOT extras: they pin conflicting torch/transformers versions and are
+# installed into isolated virtualenvs (server/envs/<engine>) by scripts/install_engine.py or
+# from the extension's options page.
+# ElevenLabs is called through plain HTTPS (httpx) - no extra dependency
+elevenlabs = []
+all = ["edge-tts>=7.0", "piper-tts>=1.3"]
+
+[project.scripts]
+polarnik-server = "polarnik_server.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["polarnik_server*"]
