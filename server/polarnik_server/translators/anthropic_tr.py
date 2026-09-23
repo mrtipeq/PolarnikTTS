@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 
 from .base import Translator
-from .prompt import SYSTEM_PROMPT, build_user_prompt, parse_json_array
+from .prompt import build_user_prompt, parse_json_array, system_prompt
 
 API = "https://api.anthropic.com/v1/messages"
 
@@ -25,7 +25,7 @@ class AnthropicTranslator(Translator):
             return False, "model not set"
         return True, ""
 
-    async def translate(self, sentences, source_lang, context_before, context_after):
+    async def translate(self, sentences, source_lang, context_before, context_after, target_lang="pl"):
         if not sentences:
             return []
         headers = {
@@ -37,9 +37,9 @@ class AnthropicTranslator(Translator):
             "model": self.cfg["model"],
             "max_tokens": int(self.cfg.get("max_tokens", 4096)),
             "temperature": float(self.cfg.get("temperature", 0.2)),
-            "system": SYSTEM_PROMPT,
+            "system": system_prompt(target_lang),
             "messages": [{"role": "user",
-                          "content": build_user_prompt(sentences, source_lang, context_before, context_after)}],
+                          "content": build_user_prompt(sentences, source_lang, context_before, context_after, target_lang)}],
         }
         async with httpx.AsyncClient(timeout=float(self.cfg.get("timeout", 90))) as client:
             r = await client.post(API, headers=headers, json=body)

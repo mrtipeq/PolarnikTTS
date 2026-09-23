@@ -5,7 +5,7 @@
 Protocol (one JSON object per line on stdin/stdout):
   {"cmd": "check"}                              -> {"ok": true, "ready": bool, "reason": str}
   {"cmd": "voices"}                             -> {"ok": true, "voices": [{"id","name"}], "default_voice": str}
-  {"cmd": "synthesize", "text", "voice", "speed"} -> {"ok": true, "mime", "sample_rate", "duration", "data_b64"}
+  {"cmd": "synthesize", "text", "voice", "speed", "lang"} -> {"ok": true, "mime", "sample_rate", "duration", "data_b64"}
   {"cmd": "download"}                           -> {"ok": true}   (pre-fetch model weights)
   {"cmd": "quit"}
 
@@ -57,7 +57,7 @@ def main() -> None:
                 ready, reason = engine.ensure_ready()
                 resp = {"ok": True, "ready": ready, "reason": reason}
             elif cmd == "voices":
-                resp = {"ok": True, "voices": [{"id": v.id, "name": v.name} for v in engine.voices()],
+                resp = {"ok": True, "voices": [{"id": v.id, "name": v.name, "lang": v.lang} for v in engine.voices()],
                         "default_voice": engine.default_voice}
             elif cmd == "download":
                 engine.load()
@@ -65,7 +65,7 @@ def main() -> None:
                 resp = {"ok": True}
             elif cmd == "synthesize":
                 result = engine._load_and_run(msg["text"], msg.get("voice") or engine.default_voice,  # noqa: SLF001
-                                              float(msg.get("speed", 1.0)))
+                                              float(msg.get("speed", 1.0)), str(msg.get("lang") or "pl"))
                 resp = {"ok": True, "mime": result.mime, "sample_rate": result.sample_rate,
                         "duration": result.duration, "data_b64": base64.b64encode(result.data).decode("ascii")}
             else:

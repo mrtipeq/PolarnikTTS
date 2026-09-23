@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "PolarnikTTS"
+  },
+  "extDescription": {
+    "message": "YouTube 字幕のナレーション: 字幕をあなたの言語に翻訳し、選んだ TTS エンジン（ローカルまたはクラウド）で読み上げます。"
+  }
+}

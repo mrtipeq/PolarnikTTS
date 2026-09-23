@@ -26,7 +26,7 @@ class TestToneEngine(Engine):
     def default_voice(self) -> str:
         return self.cfg.get("default_voice") or "beep"
 
-    def synthesize_sync(self, text: str, voice: str, speed: float) -> AudioResult:
+    def synthesize_sync(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
         # ~ 60 ms per character at speed 1.0, at least 0.3 s
         seconds = max(0.3, len(text) * 0.06 / max(speed, 0.1))
         freq = 220.0 if voice == "low" else 440.0

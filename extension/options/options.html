@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>PolarnikTTS – ustawienia</title>
+  <title>PolarnikTTS</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
@@ -10,27 +10,40 @@
     <img src="../icons/icon48.png" alt="" width="40" height="40">
     <div>
       <h1>PolarnikTTS</h1>
-      <p class="muted">Polski lektor do napisów na YouTube – ustawienia</p>
+      <p class="muted" data-i18n="opt.subtitle">Voice-over for YouTube subtitles – settings</p>
     </div>
   </header>
 
   <section>
-    <h2>Serwer silników</h2>
-    <p class="muted">Serwer PolarnikTTS może działać na tym komputerze albo na innym w sieci lokalnej (np. na maszynie z GPU).</p>
+    <h2 data-i18n="opt.language">Language</h2>
     <div class="row">
-      <label for="serverUrl">Adres serwera</label>
+      <label for="uiLang" data-i18n="opt.uiLang">Interface language</label>
+      <select id="uiLang"></select>
+    </div>
+    <div class="row">
+      <label for="targetLang" data-i18n="opt.targetLang">Voice-over language</label>
+      <select id="targetLang"></select>
+    </div>
+    <p class="muted" data-i18n="opt.languageHelp">"Automatic" follows your system language. The voice-over language decides what the subtitles are translated into and which voices are offered; changing it re-synthesizes the current video.</p>
+  </section>
+
+  <section>
+    <h2 data-i18n="opt.server">Engine server</h2>
+    <p class="muted" data-i18n="opt.serverHelp">The PolarnikTTS server can run on this computer or on another one in your local network (e.g. a machine with a GPU).</p>
+    <div class="row">
+      <label for="serverUrl" data-i18n="opt.serverUrl">Server address</label>
       <input id="serverUrl" type="url" placeholder="http://127.0.0.1:8765" spellcheck="false">
     </div>
     <div class="row">
-      <label for="serverToken">Token (opcjonalnie)</label>
-      <input id="serverToken" type="password" placeholder="pusty, jeśli serwer nie wymaga" spellcheck="false">
+      <label for="serverToken" data-i18n="opt.serverToken">Token (optional)</label>
+      <input id="serverToken" type="password" data-i18n-placeholder="opt.serverTokenPh" spellcheck="false">
     </div>
     <div class="row">
       <label></label>
       <div>
-        <button id="btnConnect" type="button">Połącz i pobierz listę silników</button>
-        <button id="btnStart" type="button" class="primary hidden">Uruchom serwer</button>
-        <button id="btnStop" type="button" class="hidden">Zatrzymaj serwer</button>
+        <button id="btnConnect" type="button" data-i18n="opt.connect">Connect and load engines</button>
+        <button id="btnStart" type="button" class="primary hidden" data-i18n="common.startServer">Start server</button>
+        <button id="btnStop" type="button" class="hidden" data-i18n="opt.stopServer">Stop server</button>
         <span id="serverStatus" class="status"></span>
       </div>
     </div>
@@ -38,97 +51,97 @@
   </section>
 
   <section>
-    <h2>Głos</h2>
+    <h2 data-i18n="opt.voice">Voice</h2>
     <div class="row">
-      <label for="engine">Silnik TTS</label>
-      <select id="engine"><option value="">(domyślny serwera)</option></select>
+      <label for="engine" data-i18n="opt.engine">TTS engine</label>
+      <select id="engine"><option value="" data-i18n="opt.engineServerDefault">(server default)</option></select>
     </div>
     <div class="row">
-      <label for="voice">Głos</label>
-      <select id="voice"><option value="">(domyślny silnika)</option></select>
+      <label for="voice" data-i18n="opt.voiceLabel">Voice</label>
+      <select id="voice"><option value="" data-i18n="opt.voiceEngineDefault">(engine default)</option></select>
     </div>
     <div class="row">
-      <label for="speed">Tempo <output id="speedOut">1.00</output>×</label>
+      <label for="speed"><span data-i18n="opt.speed">Speed</span> <output id="speedOut">1.00</output>×</label>
       <input id="speed" type="range" min="0.7" max="1.5" step="0.05" value="1">
     </div>
     <div class="row">
-      <label for="testText">Zdanie testowe</label>
-      <textarea id="testText" rows="2">Dzień dobry, to jest próba głosu w rozszerzeniu Polarnik Te Te eS. Czy brzmi naturalnie?</textarea>
+      <label for="testText" data-i18n="opt.testText">Test sentence</label>
+      <textarea id="testText" rows="2"></textarea>
     </div>
     <div class="row">
       <label></label>
       <div>
-        <button id="btnTest" type="button">Odsłuchaj</button>
+        <button id="btnTest" type="button" data-i18n="common.listen">Listen</button>
         <span id="testStatus" class="status"></span>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>Silniki i głosy</h2>
-    <div id="manageRoot"><p class="muted">Połącz się z serwerem, aby zarządzać silnikami.</p></div>
+    <h2 data-i18n="opt.engines">Engines and voices</h2>
+    <div id="manageRoot"><p class="muted" data-i18n="opt.enginesConnectFirst">Connect to the server to manage engines.</p></div>
   </section>
 
   <section>
-    <h2>Tłumaczenie</h2>
+    <h2 data-i18n="opt.translation">Translation</h2>
     <div class="row">
-      <label for="translator">Tłumacz napisów</label>
-      <select id="translator"><option value="youtube">YouTube (automatyczne tłumaczenie)</option></select>
+      <label for="translator" data-i18n="opt.translator">Subtitle translator</label>
+      <select id="translator"><option value="youtube" data-i18n="opt.youtubeAuto">YouTube (auto-translate)</option></select>
     </div>
     <div class="row">
-      <label for="translateTestText">Zdanie do sprawdzenia</label>
+      <label for="translateTestText" data-i18n="opt.translateTestText">Sentence to check</label>
       <textarea id="translateTestText" rows="2">so what we're going to do today is take a look at the new board and see how it performs under load</textarea>
     </div>
     <div class="row">
       <label></label>
       <div>
-        <button id="btnTranslateTest" type="button">Sprawdź tłumacza</button>
+        <button id="btnTranslateTest" type="button" data-i18n="opt.checkTranslator">Check translator</button>
         <span id="translateTestStatus" class="status"></span>
       </div>
     </div>
     <div id="translateTestResult" class="info hidden"></div>
-    <p class="muted">Tłumacze LLM odtwarzają interpunkcję i granice zdań – dopiero to daje lektorowi naturalną intonację. Włączasz je i wpisujesz klucze w sekcji „Silniki i głosy” powyżej.</p>
+    <p class="muted" data-i18n="opt.translationHelp">LLM translators restore punctuation and sentence boundaries – that is what gives the voice-over natural intonation. Enable them and enter API keys in "Engines and voices" above.</p>
   </section>
 
   <section>
-    <h2>Odtwarzanie</h2>
+    <h2 data-i18n="opt.playback">Playback</h2>
     <div class="row">
-      <label for="voiceVolume">Głośność lektora <output id="voiceVolumeOut">100</output>%</label>
+      <label for="voiceVolume"><span data-i18n="opt.voiceVolume">Voice-over volume</span> <output id="voiceVolumeOut">100</output>%</label>
       <input id="voiceVolume" type="range" min="0" max="1" step="0.05" value="1">
     </div>
     <div class="row">
-      <label for="duckingDb">Ściszenie oryginału <output id="duckingOut">-12</output> dB</label>
+      <label for="duckingDb"><span data-i18n="opt.ducking">Original audio ducking</span> <output id="duckingOut">-12</output> dB</label>
       <input id="duckingDb" type="range" min="-40" max="0" step="1" value="-12">
     </div>
     <div class="row">
-      <label for="maxRate">Maks. przyspieszenie dopasowania <output id="maxRateOut">1.35</output>×</label>
+      <label for="maxRate"><span data-i18n="opt.maxRate">Max. fitting speed-up</span> <output id="maxRateOut">1.35</output>×</label>
       <input id="maxRate" type="range" min="1" max="1.6" step="0.05" value="1.35">
     </div>
     <div class="row">
-      <label for="lagMode">Gdy lektor nie nadąża</label>
+      <label for="lagMode" data-i18n="opt.lagMode">When the voice-over falls behind</label>
       <select id="lagMode">
-        <option value="speed">Przyspiesz lektora (do maks. przyspieszenia)</option>
-        <option value="video">Zwolnij film, aż lektor dogoni</option>
+        <option value="speed" data-i18n="panel.lagSpeed">Speed the voice-over up (to the max. speed-up)</option>
+        <option value="video" data-i18n="panel.lagVideo">Slow the video down until the voice-over catches up</option>
       </select>
     </div>
     <div class="row">
-      <label for="offsetMs">Przesunięcie lektora <output id="offsetOut">0</output> ms</label>
+      <label for="offsetMs"><span data-i18n="opt.offset">Voice-over offset</span> <output id="offsetOut">0</output> ms</label>
       <input id="offsetMs" type="range" min="-2000" max="2000" step="50" value="0">
     </div>
     <div class="row">
-      <label for="lookaheadS">Wyprzedzenie syntezy <output id="lookaheadOut">30</output> s</label>
+      <label for="lookaheadS"><span data-i18n="opt.lookahead">Synthesis look-ahead</span> <output id="lookaheadOut">30</output> s</label>
       <input id="lookaheadS" type="range" min="10" max="90" step="5" value="30">
     </div>
   </section>
 
   <section>
-    <h2>Przenoszenie ustawień</h2>
-    <p class="muted">Eksport zapisuje do jednego pliku ustawienia rozszerzenia, konfigurację serwera (silniki, tłumacze, klucze API) i próbki głosów. Na drugim komputerze: zainstaluj PolarnikTTS, uruchom serwer i zaimportuj plik. Plik zawiera klucze API – traktuj go jak hasło.</p>
+    <h2 data-i18n="opt.transfer">Moving settings</h2>
+    <p class="muted" data-i18n="opt.transferHelp">Export writes the extension settings, the server configuration (engines, translators, API keys) and voice samples into one file. On the other computer: install PolarnikTTS, start the server and import the file. The file contains API keys – treat it like a password.</p>
     <div class="row">
       <label></label>
       <div>
-        <button id="btnExport" type="button">Eksportuj ustawienia…</button>
-        <button id="btnImport" type="button">Importuj ustawienia…</button>
+        <button id="btnExport" type="button" data-i18n="opt.export">Export settings…</button>
+        <button id="btnImport" type="button" data-i18n="opt.import">Import settings…</button>
         <input id="importFile" type="file" accept=".json,application/json" hidden>
         <span id="transferStatus" class="status"></span>
       </div>
@@ -136,22 +149,22 @@
   </section>
 
   <section id="about">
-    <h2>O programie</h2>
+    <h2 data-i18n="opt.about">About</h2>
     <div class="about">
       <img src="../icons/icon128.png" alt="" width="64" height="64">
       <div>
         <p><b>PolarnikTTS</b> <span id="aboutVersion" class="muted"></span></p>
-        <p>Polski lektor do YouTube – tłumaczy napisy i czyta je w czasie rzeczywistym wybranym silnikiem: lokalnym (GPU/CPU) albo chmurowym, z klonowaniem głosu z własnej próbki.</p>
-        <p>Autor: <b>MrTip (Darek)</b> z <a href="https://tipson.pl" target="_blank" rel="noopener">Tipson</a> · <a href="https://tipson.pl" target="_blank" rel="noopener">tipson.pl</a> · <a href="https://github.com/mrtipeq/PolarnikTTS" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/mrtipeq/PolarnikTTS/issues" target="_blank" rel="noopener">zgłoś problem</a></p>
-        <p>Zaprojektowane i zbudowane w całości pod komendą <b>Claude Fable 5.1 (High)</b> firmy Anthropic – od analizy pierwowzoru, przez architekturę i kod serwera oraz rozszerzenia, po testy – według pomysłu i wymagań MrTipa.</p>
+        <p data-i18n="about.what">Voice-over for YouTube – translates the subtitles and reads them in real time with the engine of your choice: local (GPU/CPU) or cloud, with voice cloning from your own sample.</p>
+        <p><span data-i18n="about.author">Author:</span> <b>MrTip (Darek)</b> · <a href="https://tipson.pl" target="_blank" rel="noopener">Tipson</a> · <a href="https://tipson.pl" target="_blank" rel="noopener">tipson.pl</a> · <a href="https://github.com/mrtipeq/PolarnikTTS" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/mrtipeq/PolarnikTTS/issues" target="_blank" rel="noopener" data-i18n="about.report">report a problem</a></p>
+        <p data-i18n-html="about.credits">Designed and built entirely under the command of <b>Claude Fable 5.1 (High)</b> by Anthropic – from the analysis of the original, through architecture and the server and extension code, to testing – to MrTip's idea and requirements.</p>
         <p class="muted" id="aboutStats"></p>
-        <p class="muted">Licencja MIT. Rozszerzenie: Manifest V3, bez bibliotek i bez telemetrii – nic nie jest wysyłane nigdzie poza serwerem PolarnikTTS i dostawcami, których sam włączysz. Serwer: Python + FastAPI, wtyczki silników (Microsoft Edge, Piper, Chatterbox, XTTS-v2, OpenAI, Gemini, ElevenLabs) i tłumaczy (OpenAI, Gemini, Ollama/Bielik, Claude, DeepL).</p>
+        <p class="muted" data-i18n="about.tech">MIT licence. Extension: Manifest V3, no libraries and no telemetry – nothing is sent anywhere except to the PolarnikTTS server and the providers you enable yourself. Server: Python + FastAPI, engine plugins (Microsoft Edge, Piper, Chatterbox, XTTS-v2, OpenAI, Gemini, ElevenLabs) and translators (OpenAI, Gemini, Ollama/Bielik, Claude, DeepL).</p>
       </div>
     </div>
   </section>
 
   <footer>
-    <button id="btnSave" type="button" class="primary">Zapisz</button>
+    <button id="btnSave" type="button" class="primary" data-i18n="common.save">Save</button>
     <span id="saveStatus" class="status"></span>
   </footer>
 

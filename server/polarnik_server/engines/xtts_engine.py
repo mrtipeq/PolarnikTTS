@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from ..audio import pcm16_to_wav
+from ..languages import LANGUAGES
 from .base import AudioResult, Engine, Voice, cuda_kernel_problem, pick_device
 
 XTTS_MODEL = "tts_models/multilingual/multi-dataset/xtts_v2"
@@ -26,6 +27,7 @@ class XttsEngine(Engine):
     name = "XTTS-v2 (local GPU, cloning)"
     kind = "local-gpu"
     cloning = True
+    langs = [c for c, m in LANGUAGES.items() if m.get("xtts")]
     licence = "CPML (non-commercial)"
     serialize = True
 
@@ -68,8 +70,8 @@ class XttsEngine(Engine):
 
         self._tts = TTS(XTTS_MODEL).to(self._device)
 
-    def synthesize_sync(self, text: str, voice: str, speed: float) -> AudioResult:
-        kwargs = {"text": text, "language": "pl", "speed": float(speed)}
+    def synthesize_sync(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
+        kwargs = {"text": text, "language": LANGUAGES.get(lang, {}).get("xtts") or "en", "speed": float(speed)}
         voice = voice or self.default_voice
         if voice.startswith("sample:"):
             kwargs["speaker_wav"] = str(Path(self.cfg.get("_samples_dir", "")) / Path(voice[len("sample:"):]).name)

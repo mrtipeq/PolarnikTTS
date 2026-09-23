@@ -12,6 +12,7 @@ import base64
 import httpx
 
 from ..audio import raw_pcm16_to_wav
+from ..languages import language_name
 from .base import AudioResult, Engine, Voice
 
 API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -19,7 +20,7 @@ VOICES = ["Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede",
           "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi",
           "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi",
           "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat"]
-DEFAULT_STYLE = "Read naturally in Polish, calm and clear, like a professional voice-over narrator: "
+DEFAULT_STYLE = "Read naturally in {language}, calm and clear, like a professional voice-over narrator: "
 
 
 class GeminiTtsEngine(Engine):
@@ -41,9 +42,9 @@ class GeminiTtsEngine(Engine):
     def default_voice(self) -> str:
         return str(self.cfg.get("default_voice") or "Kore")
 
-    async def synthesize(self, text: str, voice: str, speed: float = 1.0) -> AudioResult:
+    async def synthesize(self, text: str, voice: str, speed: float = 1.0, lang: str = "pl") -> AudioResult:
         model = str(self.cfg.get("model_id") or "gemini-3.1-flash-tts-preview")
-        style = str(self.cfg.get("style") or DEFAULT_STYLE)   # speed is applied client-side (native_speed=False)
+        style = str(self.cfg.get("style") or DEFAULT_STYLE).replace("{language}", language_name(lang))   # speed is applied client-side (native_speed=False)
         body = {
             "contents": [{"parts": [{"text": f"{style}{text}"}]}],
             "generationConfig": {

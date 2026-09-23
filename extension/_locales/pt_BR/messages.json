@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "PolarnikTTS"
+  },
+  "extDescription": {
+    "message": "Narração para legendas do YouTube: traduz as legendas para o seu idioma e as lê com o motor TTS da sua escolha (local ou na nuvem)."
+  }
+}

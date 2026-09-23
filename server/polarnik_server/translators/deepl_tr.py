@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 
+from ..languages import LANGUAGES
 from .base import Translator
 
 
@@ -17,13 +18,16 @@ class DeepLTranslator(Translator):
             return False, "api_key not set"
         return True, ""
 
-    async def translate(self, sentences, source_lang, context_before, context_after):
+    async def translate(self, sentences, source_lang, context_before, context_after, target_lang="pl"):
         if not sentences:
             return []
+        deepl_target = LANGUAGES.get(target_lang, {}).get("deepl")
+        if not deepl_target:
+            raise RuntimeError(f"DeepL does not support the target language '{target_lang}' - pick an LLM translator")
         url = str(self.cfg.get("base_url", "https://api-free.deepl.com")).rstrip("/") + "/v2/translate"
         body = {
             "text": sentences,
-            "target_lang": "PL",
+            "target_lang": deepl_target,
             "context": " ".join(context_before[-5:] + context_after[:5]) or None,
             "split_sentences": "nonewlines",
         }

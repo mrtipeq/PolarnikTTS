@@ -10,12 +10,13 @@ from __future__ import annotations
 import httpx
 
 from ..audio import probe_duration
+from ..languages import language_name
 from .base import AudioResult, Engine, Voice
 
 API = "https://api.openai.com/v1/audio/speech"
 VOICES = ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse", "marin", "cedar"]
-DEFAULT_INSTRUCTIONS = ("Read the text in natural, fluent Polish with native pronunciation, calm and clear, "
-                        "like a professional Polish voice-over narrator (lektor). Do not translate or add anything.")
+DEFAULT_INSTRUCTIONS = ("Read the text in natural, fluent {language} with native pronunciation, calm and clear, "
+                        "like a professional {language} voice-over narrator. Do not translate or add anything.")
 
 
 class OpenAITtsEngine(Engine):
@@ -37,7 +38,7 @@ class OpenAITtsEngine(Engine):
     def default_voice(self) -> str:
         return str(self.cfg.get("default_voice") or "marin")
 
-    async def synthesize(self, text: str, voice: str, speed: float = 1.0) -> AudioResult:
+    async def synthesize(self, text: str, voice: str, speed: float = 1.0, lang: str = "pl") -> AudioResult:
         model = str(self.cfg.get("model_id") or "gpt-4o-mini-tts")
         body: dict = {
             "model": model,
@@ -47,7 +48,7 @@ class OpenAITtsEngine(Engine):
             "speed": float(min(max(speed, 0.25), 4.0)),
         }
         if not model.startswith("tts-1"):
-            body["instructions"] = str(self.cfg.get("instructions") or DEFAULT_INSTRUCTIONS)
+            body["instructions"] = str(self.cfg.get("instructions") or DEFAULT_INSTRUCTIONS).replace("{language}", language_name(lang))
         headers = {"Authorization": f"Bearer {self.cfg['api_key']}", "Content-Type": "application/json"}
         base = str(self.cfg.get("base_url") or "").rstrip("/")
         url = f"{base}/audio/speech" if base else API

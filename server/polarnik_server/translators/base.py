@@ -37,6 +37,6 @@ class Translator:
                               restores_punctuation=self.restores_punctuation)
 
     async def translate(self, sentences: list[str], source_lang: str,
-                        context_before: list[str], context_after: list[str]) -> list[str]:
-        """Translate `sentences` into Polish; must return a list of the same length."""
+                        context_before: list[str], context_after: list[str], target_lang: str = "pl") -> list[str]:
+        """Translate `sentences` into `target_lang`; must return a list of the same length."""
         raise NotImplementedError

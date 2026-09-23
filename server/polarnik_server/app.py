@@ -17,6 +17,7 @@ from . import __version__
 from .cache import AudioCache
 from .config import Config
 from .engines import Engine, build_engines
+from .languages import DEFAULT_LANGUAGE, LANGUAGES, catalog as language_catalog, normalize_lang
 from .manage import build_router
 from .translators import build_translators
 
@@ -28,12 +29,14 @@ class TtsRequest(BaseModel):
     engine: str | None = None
     voice: str | None = None
     speed: float = Field(1.0, ge=0.5, le=2.0)
+    lang: str = "pl"             # target language of the text (languages.py code)
     no_cache: bool = False
 
 
 class TranslateRequest(BaseModel):
     sentences: list[str]
     source_lang: str = "auto"
+    target_lang: str = "pl"
     context_before: list[str] = Field(default_factory=list)
     context_after: list[str] = Field(default_factory=list)
     translator: str | None = None
@@ -106,7 +109,7 @@ def create_app(config: Config) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def index() -> str:
-        """Human-readable status page (Polish UI, like the extension)."""
+        """Human-readable status page (English; the extension UI is localized)."""
         rows = []
         for e in state.engines.values():
             info = e.info()
@@ -117,25 +120,25 @@ def create_app(config: Config) -> FastAPI:
             f"<li>{'✔' if t.info().ready else '✘'} <b>{t.id}</b> ({t.info().name})"
             f"{' – ' + t.info().reason if t.info().reason else ''}</li>"
             for t in state.translators.values()
-        ) or "<li>brak (tylko tłumaczenie YouTube w rozszerzeniu)</li>"
+        ) or "<li>none (only YouTube auto-translate in the extension)</li>"
         cuda = cuda_info()
-        cuda_html = f"{cuda['device']} ({cuda['vram_gb']} GB)" if cuda["available"] else "brak (tylko CPU / chmura)"
-        return f"""<!doctype html><html lang="pl"><head><meta charset="utf-8">
-<title>PolarnikTTS – serwer silników</title>
+        cuda_html = f"{cuda['device']} ({cuda['vram_gb']} GB)" if cuda["available"] else "none (CPU / cloud only)"
+        return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>PolarnikTTS engine server</title>
 <style>body{{font-family:system-ui,sans-serif;max-width:720px;margin:32px auto;padding:0 16px;line-height:1.5}}
 code{{background:#8882;padding:1px 5px;border-radius:4px}} li{{margin:4px 0}}</style></head><body>
-<h1>PolarnikTTS – serwer silników</h1>
-<p>Wersja {__version__}. Serwer działa – to jest API dla rozszerzenia PolarnikTTS, nie ma tu interfejsu użytkownika.
-Ustawienia głosu znajdziesz w opcjach rozszerzenia w Chrome.</p>
+<h1>PolarnikTTS engine server</h1>
+<p>Version {__version__}. The server is running - this is the API for the PolarnikTTS extension; there is no user
+interface here. Voice settings live in the extension's options page in Chrome.</p>
 <p>CUDA: {cuda_html}</p>
-<h2>Silniki TTS</h2><ul>{''.join(rows)}</ul>
-<h2>Tłumacze</h2><ul>{translators_html}</ul>
+<h2>TTS engines</h2><ul>{''.join(rows)}</ul>
+<h2>Translators</h2><ul>{translators_html}</ul>
 <h2>API</h2><ul>
-<li><a href="/health"><code>GET /health</code></a> – stan serwera (JSON)</li>
-<li><a href="/engines"><code>GET /engines</code></a> – silniki i głosy</li>
-<li><a href="/translators"><code>GET /translators</code></a> – tłumacze</li>
-<li><code>POST /tts</code>, <code>POST /translate</code> – synteza i tłumaczenie</li>
-<li><a href="/docs"><code>/docs</code></a> – interaktywna dokumentacja API</li></ul>
+<li><a href="/health"><code>GET /health</code></a> - server status (JSON)</li>
+<li><a href="/engines"><code>GET /engines</code></a> - engines and voices</li>
+<li><a href="/translators"><code>GET /translators</code></a> - translators</li>
+<li><code>POST /tts</code>, <code>POST /translate</code> - synthesis and translation; <a href="/languages"><code>GET /languages</code></a> - target languages</li>
+<li><a href="/docs"><code>/docs</code></a> - interactive API docs</li></ul>
 </body></html>"""
 
     @app.get("/health")
@@ -156,6 +159,12 @@ Ustawienia głosu znajdziesz w opcjach rozszerzenia w Chrome.</p>
     async def engines() -> list[dict[str, Any]]:
         return [asdict(e.info()) for e in state.engines.values()]
 
+    @app.get("/languages")
+    async def languages() -> dict[str, Any]:
+        """Target languages of the voice-over and which engines can speak each of them."""
+        by_engine = {eid: (e.langs or None) for eid, e in state.engines.items()}
+        return {"default": DEFAULT_LANGUAGE, "languages": language_catalog(), "engine_langs": by_engine}
+
     @app.get("/translators", dependencies=[Depends(require_token)])
     async def translators() -> dict[str, Any]:
         items = [{"id": "youtube", "name": "YouTube auto-translate (in extension)", "type": "youtube",
@@ -172,13 +181,16 @@ Ustawienia głosu znajdziesz w opcjach rozszerzenia w Chrome.</p>
         ready, reason = engine.ensure_ready()
         if not ready:
             raise HTTPException(status_code=503, detail=f"engine {engine_id} not ready: {reason}")
-        voice = req.voice or engine.default_voice
-        key = AudioCache.key(engine_id, voice, req.speed, req.text)
+        lang = normalize_lang(req.lang)
+        if not engine.supports_lang(lang):
+            raise HTTPException(status_code=400, detail=f"engine {engine_id} cannot speak {LANGUAGES[lang]['name']} - pick another engine")
+        voice = req.voice or engine.default_voice_for(lang)
+        key = AudioCache.key(engine_id, voice, req.speed, req.text if lang == "pl" else f"{lang}\x1f{req.text}")
         hit = None if req.no_cache else state.cache.get(engine_id, key)
         if hit is None:
             t0 = time.perf_counter()
             try:
-                result = await engine.synthesize(req.text, voice, req.speed)
+                result = await engine.synthesize(req.text, voice, req.speed, lang)
             except Exception as exc:  # noqa: BLE001
                 log.exception("%s synthesis failed", engine_id)
                 raise HTTPException(status_code=500, detail=f"{engine_id}: {type(exc).__name__}: {exc}") from exc
@@ -211,7 +223,8 @@ Ustawienia głosu znajdziesz w opcjach rozszerzenia w Chrome.</p>
             raise HTTPException(status_code=503, detail=f"translator {tid} not ready: {info.reason}")
         t0 = time.perf_counter()
         try:
-            out = await tr.translate(req.sentences, req.source_lang, req.context_before, req.context_after)
+            out = await tr.translate(req.sentences, req.source_lang, req.context_before, req.context_after,
+                                     normalize_lang(req.target_lang))
         except Exception as exc:  # noqa: BLE001
             log.exception("%s translation failed", tid)
             raise HTTPException(status_code=502, detail=f"{tid}: {type(exc).__name__}: {exc}") from exc

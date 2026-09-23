@@ -7,7 +7,7 @@ import re
 import httpx
 
 from .base import Translator
-from .prompt import SYSTEM_PROMPT, build_user_prompt, parse_json_array
+from .prompt import build_user_prompt, parse_json_array, system_prompt
 
 
 class OpenAICompatTranslator(Translator):
@@ -25,7 +25,7 @@ class OpenAICompatTranslator(Translator):
             return False, "model not set"
         return True, ""
 
-    async def translate(self, sentences, source_lang, context_before, context_after):
+    async def translate(self, sentences, source_lang, context_before, context_after, target_lang="pl"):
         if not sentences:
             return []
         headers = {"Content-Type": "application/json"}
@@ -35,8 +35,8 @@ class OpenAICompatTranslator(Translator):
             "model": self.cfg["model"],
             "temperature": float(self.cfg.get("temperature", 0.2)),
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_user_prompt(sentences, source_lang, context_before, context_after)},
+                {"role": "system", "content": system_prompt(target_lang)},
+                {"role": "user", "content": build_user_prompt(sentences, source_lang, context_before, context_after, target_lang)},
             ],
         }
         base = str(self.cfg["base_url"]).rstrip("/")

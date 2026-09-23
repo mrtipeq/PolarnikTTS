@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "PolarnikTTS"
+  },
+  "extDescription": {
+    "message": "YouTube 자막 더빙: 자막을 내 언어로 번역하고 선택한 TTS 엔진(로컬 또는 클라우드)으로 읽어 줍니다."
+  }
+}

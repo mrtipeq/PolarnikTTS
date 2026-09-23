@@ -1,19 +1,18 @@
 """Microsoft Edge neural voices through the unofficial edge-tts library (cloud, free).
 
-Very good Polish prosody (pl-PL-ZofiaNeural, pl-PL-MarekNeural). Unofficial API:
-it may break without notice, keep another engine configured as fallback.
+Very good prosody in every language listed in languages.py (Polish: pl-PL-ZofiaNeural,
+pl-PL-MarekNeural). Unofficial API: it may break without notice, keep another engine
+configured as fallback.
 Install: pip install -e ".[edge]"
 """
 
 from __future__ import annotations
 
 from ..audio import probe_duration
+from ..languages import LANGUAGES
 from .base import AudioResult, Engine, Voice
 
-POLISH_VOICES = [
-    Voice("pl-PL-ZofiaNeural", "Zofia (female)"),
-    Voice("pl-PL-MarekNeural", "Marek (male)"),
-]
+ALL_VOICES = [Voice(vid, label, lang) for lang, meta in LANGUAGES.items() for vid, label in meta["edge"]]
 
 
 class EdgeTtsEngine(Engine):
@@ -31,7 +30,7 @@ class EdgeTtsEngine(Engine):
         return True, ""
 
     def voices(self) -> list[Voice]:
-        return list(POLISH_VOICES)
+        return list(ALL_VOICES)
 
     @property
     def default_voice(self) -> str:
@@ -43,12 +42,12 @@ class EdgeTtsEngine(Engine):
         pct = int(round((speed - 1.0) * 100)) + base_pct
         return f"{'+' if pct >= 0 else ''}{pct}%"
 
-    async def synthesize(self, text: str, voice: str, speed: float = 1.0) -> AudioResult:
+    async def synthesize(self, text: str, voice: str, speed: float = 1.0, lang: str = "pl") -> AudioResult:
         import edge_tts
 
         communicate = edge_tts.Communicate(
             text,
-            voice or self.default_voice,
+            voice or self.default_voice_for(lang),
             rate=self._rate_from_speed(speed, self.cfg.get("rate", "+0%")),
             pitch=str(self.cfg.get("pitch", "+0Hz")),
         )

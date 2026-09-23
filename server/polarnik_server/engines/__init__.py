@@ -67,6 +67,7 @@ def build_engines(engines_cfg: dict[str, dict[str, Any]], models_dir, server_dir
             engine: Engine = IsolatedEngine(engine_id, cfg, Path(models_dir), server_dir,
                                             name=direct.name, licence=direct.licence,
                                             native_speed=getattr(direct, "native_speed", True))
+            engine.langs = list(getattr(direct, "langs", []))
         else:
             cls = engine_class(type_id)
             if cls is None:

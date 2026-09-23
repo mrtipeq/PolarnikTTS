@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 class Voice:
     id: str
     name: str
+    lang: str = ""               # LANGUAGES code the voice speaks; "" = any language (multilingual / cloned)
 
 
 @dataclass
@@ -37,6 +38,7 @@ class EngineInfo:
     default_voice: str = ""
     voices: list[Voice] = field(default_factory=list)
     licence: str = ""
+    langs: list[str] = field(default_factory=list)   # target languages the engine can speak; [] = any
 
 
 class Engine:
@@ -51,6 +53,8 @@ class Engine:
     native_speed: bool = True
     # Engines that must not run concurrently (GPU models) set this to True.
     serialize: bool = False
+    # Target languages this engine can speak ([] = anything the voice supports).
+    langs: list[str] = []
 
     def __init__(self, cfg: dict[str, Any], models_dir):
         self.cfg = cfg or {}
@@ -85,6 +89,25 @@ class Engine:
     def default_voice(self) -> str:
         return str(self.cfg.get("default_voice") or "")
 
+    def default_voice_for(self, lang: str) -> str:
+        """Default voice for a target language: the configured one when it speaks that language
+        (or is language-neutral), else the first voice of that language, else the plain default."""
+        try:
+            voices = self.voices()
+        except Exception:  # noqa: BLE001
+            voices = []
+        by_id = {v.id: v for v in voices}
+        configured = self.default_voice
+        if configured and (configured not in by_id or not by_id[configured].lang or by_id[configured].lang == lang):
+            return configured
+        for v in voices:
+            if v.lang == lang:
+                return v.id
+        return configured
+
+    def supports_lang(self, lang: str) -> bool:
+        return not self.langs or lang in self.langs
+
     def info(self) -> EngineInfo:
         ready, reason = self.ensure_ready()
         voices: list[Voice] = []
@@ -95,27 +118,28 @@ class Engine:
                 log.warning("%s: voices() failed: %s", self.id, exc)
         return EngineInfo(id=self.id, name=self.name, kind=self.kind, ready=ready, reason=reason,
                           streaming=self.streaming, cloning=self.cloning, native_speed=self.native_speed,
-                          default_voice=self.default_voice, voices=voices, licence=self.licence)
+                          default_voice=self.default_voice, voices=voices, licence=self.licence,
+                          langs=list(self.langs))
 
     # -- synthesis -------------------------------------------------------
 
-    def synthesize_sync(self, text: str, voice: str, speed: float) -> AudioResult:
+    def synthesize_sync(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
         raise NotImplementedError
 
-    async def synthesize(self, text: str, voice: str, speed: float = 1.0) -> AudioResult:
+    async def synthesize(self, text: str, voice: str, speed: float = 1.0, lang: str = "pl") -> AudioResult:
         """Default: run the blocking synthesize_sync in a worker thread."""
         if self.serialize:
             async with self._lock:
-                return await asyncio.to_thread(self._load_and_run, text, voice, speed)
-        return await asyncio.to_thread(self._load_and_run, text, voice, speed)
+                return await asyncio.to_thread(self._load_and_run, text, voice, speed, lang)
+        return await asyncio.to_thread(self._load_and_run, text, voice, speed, lang)
 
     _loaded = False
 
-    def _load_and_run(self, text: str, voice: str, speed: float) -> AudioResult:
+    def _load_and_run(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
         if not self._loaded:
             self.load()
             self._loaded = True
-        return self.synthesize_sync(text, voice, speed)
+        return self.synthesize_sync(text, voice, speed, lang)
 
 
 def pick_device(requested: str) -> str:

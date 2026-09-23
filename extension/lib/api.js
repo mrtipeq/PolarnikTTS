@@ -34,6 +34,7 @@ export class ServerClient {
   manageCatalog() { return this.getJson("/manage/catalog"); }
   manageInstall(engine, voices) { return this.postJson("/manage/install", { engine, voices: voices || null }); }
   manageJob(id, tail = 40) { return this.getJson(`/manage/jobs/${id}?tail=${tail}`); }
+  languages() { return this.getJson("/languages"); }
   manageOllama() { return this.getJson("/manage/ollama"); }
   manageModels(section, id) { return this.getJson(`/manage/models?section=${section}&id=${encodeURIComponent(id)}`); }
   manageOllamaPull(model) { return this.postJson("/manage/ollama/pull", { model }); }
@@ -59,11 +60,11 @@ export class ServerClient {
   sampleAudioUrl(name) { return `${this.baseUrl}/manage/samples/${encodeURIComponent(name)}/audio`; }
 
   /** Returns { blob, duration, cache, engine, voice }. */
-  async tts({ text, engine, voice, speed }) {
+  async tts({ text, engine, voice, speed, lang }) {
     const r = await fetch(`${this.baseUrl}/tts`, {
       method: "POST",
       headers: this.headers({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ text, engine: engine || null, voice: voice || null, speed: speed || 1.0 }),
+      body: JSON.stringify({ text, engine: engine || null, voice: voice || null, speed: speed || 1.0, lang: lang || "pl" }),
     });
     if (!r.ok) throw new Error(`/tts: HTTP ${r.status} ${await r.text()}`);
     return {
@@ -75,13 +76,13 @@ export class ServerClient {
     };
   }
 
-  async translate({ sentences, sourceLang = "auto", contextBefore = [], contextAfter = [], translator }) {
+  async translate({ sentences, sourceLang = "auto", contextBefore = [], contextAfter = [], translator, targetLang }) {
     const r = await fetch(`${this.baseUrl}/translate`, {
       method: "POST",
       headers: this.headers({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         sentences, source_lang: sourceLang, context_before: contextBefore,
-        context_after: contextAfter, translator: translator || null,
+        context_after: contextAfter, translator: translator || null, target_lang: targetLang || "pl",
       }),
     });
     if (!r.ok) throw new Error(`/translate: HTTP ${r.status} ${await r.text()}`);

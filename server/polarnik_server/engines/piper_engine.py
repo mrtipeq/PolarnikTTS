@@ -1,4 +1,4 @@
-"""Piper (rhasspy / OHF-Voice piper1-gpl) - fast CPU engine, Polish voices pl_PL-*.
+"""Piper (rhasspy / OHF-Voice piper1-gpl) - fast CPU engine, one downloadable voice per file.
 
 Install: pip install -e ".[piper]"
 Voices:  python scripts/download_models.py piper  (or python -m piper.download_voices ...)
@@ -10,7 +10,19 @@ import io
 import wave
 from pathlib import Path
 
+from ..languages import LANGUAGES
 from .base import AudioResult, Engine, Voice
+
+# voice file stem -> (label, language code), from the per-language catalog
+KNOWN_VOICES = {vid: (label, lang) for lang, meta in LANGUAGES.items() for vid, label, _mb in meta["piper"]}
+
+
+def voice_lang(stem: str) -> str:
+    """Language of a Piper voice: catalog entry, else the locale prefix of its name (de_DE-... -> de)."""
+    if stem in KNOWN_VOICES:
+        return KNOWN_VOICES[stem][1]
+    prefix = stem.split("-")[0].split("_")[0].lower()
+    return prefix if prefix in LANGUAGES else ""
 
 
 class PiperEngine(Engine):
@@ -43,7 +55,8 @@ class PiperEngine(Engine):
         return sorted(p for p in self.voices_dir.glob("*.onnx") if p.with_suffix(".onnx.json").exists())
 
     def voices(self) -> list[Voice]:
-        return [Voice(p.stem, p.stem) for p in self._available_voice_files()]
+        return [Voice(p.stem, KNOWN_VOICES.get(p.stem, (p.stem, ""))[0], voice_lang(p.stem))
+                for p in self._available_voice_files()]
 
     @property
     def default_voice(self) -> str:
@@ -63,10 +76,10 @@ class PiperEngine(Engine):
             self._voices[voice_id] = PiperVoice.load(str(path))
         return self._voices[voice_id]
 
-    def synthesize_sync(self, text: str, voice: str, speed: float) -> AudioResult:
+    def synthesize_sync(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
         from piper import SynthesisConfig
 
-        pv = self._get_voice(voice or self.default_voice)
+        pv = self._get_voice(voice or self.default_voice_for(lang))
         syn = SynthesisConfig(length_scale=1.0 / max(speed, 0.2))
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:

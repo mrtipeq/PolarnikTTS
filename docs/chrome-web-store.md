@@ -94,7 +94,8 @@ Ready to upload, in `docs/store/` (1280x800 PNG, Polish captions, in listing ord
 | `05_playback_transfer.png` | Playback settings, export/import and the "O programie" section |
 | `promo_440x280.png` | Small promo tile |
 
-The raw UI captures live in `docs/screenshots/` (also embedded in `README.md`). After a UI
+The raw UI captures live in `docs/screenshots/` (also embedded in `README.md`); `08`-`10` show
+the English UI and the language pickers - use them for the English-language listing. After a UI
 change, replace the raw capture and regenerate the store images:
 
 ```

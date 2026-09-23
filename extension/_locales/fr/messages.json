@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "PolarnikTTS"
+  },
+  "extDescription": {
+    "message": "Voix off pour les sous-titres YouTube : traduit les sous-titres dans votre langue et les lit avec le moteur TTS de votre choix (local ou cloud)."
+  }
+}

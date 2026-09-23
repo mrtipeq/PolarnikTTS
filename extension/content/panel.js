@@ -2,7 +2,10 @@
 // Every change is saved to chrome.storage immediately; the pipeline reacts through
 // onSettingsChanged in content.js.
 
-export function createPanel({ container, getSettings, saveSettings, client, onClose, onServerStarted }) {
+import { TARGET_LANGS, systemLang } from "../lib/i18n.js";
+
+export function createPanel({ container, getSettings, saveSettings, client, onClose, onServerStarted, t, targetLang }) {
+  // t: translator from lib/i18n.js; targetLang(): current voice-over language (filters the voice list)
   const root = document.createElement("div");
   root.className = "polarnik-panel";
   root.hidden = true;
@@ -28,20 +31,25 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
   };
 
   function engineName(id) {
-    if (!id) return "domyślny serwera";
+    if (!id) return t("panel.serverDefault");
     const e = engines.find((x) => x.id === id);
     return e ? e.name : id;
   }
   function voiceName(engineId, voiceId) {
-    if (!voiceId) return "domyślny";
+    if (!voiceId) return t("panel.default");
     const e = engines.find((x) => x.id === engineId) || engines.find((x) => x.voices.some((v) => v.id === voiceId));
     const v = e?.voices.find((x) => x.id === voiceId);
     return v ? v.name : voiceId;
   }
+  function languageName(code) {
+    const s = getSettings();
+    const name = TARGET_LANGS[code] || code;
+    return (s.targetLang || "auto") === "auto" ? `${name} (${t("panel.auto")})` : name;
+  }
   function translatorName(id) {
-    if (id === "youtube") return "YouTube (automatyczne)";
-    const t = translators.find((x) => x.id === id);
-    return t ? t.name : id;
+    if (id === "youtube") return t("panel.youtubeAuto");
+    const tr = translators.find((x) => x.id === id);
+    return tr ? tr.name : id;
   }
 
   // ---- rows -------------------------------------------------------------------------
@@ -90,23 +98,24 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
   function renderMain() {
     const s = getSettings();
     root.replaceChildren(
-      rowToggle("Lektor włączony", "enabled"),
-      rowChoice("Silnik TTS", engineName(s.engine), { kind: "engine" }),
-      rowChoice("Głos", voiceName(s.engine, s.voice), { kind: "voice" }),
-      rowChoice("Tłumacz napisów", translatorName(s.translator), { kind: "translator" }),
-      rowRange("Głośność lektora", "voiceVolume", 0, 1, 0.05, fmt.pct, (v) => window.dispatchEvent(new CustomEvent("polarnik-live", { detail: { voiceVolume: v } }))),
-      rowRange("Ściszenie oryginału", "duckingDb", -40, 0, 1, fmt.db),
-      rowRange("Tempo mowy", "speed", 0.7, 1.5, 0.05, fmt.x),
-      rowRange("Maks. przyspieszenie dopasowania", "maxRate", 1.0, 1.6, 0.05, fmt.x),
-      rowChoice("Gdy lektor nie nadąża", s.lagMode === "video" ? "zwolnij film" : "przyspiesz lektora", { kind: "lagMode" }),
-      rowRange("Przesunięcie lektora", "offsetMs", -2000, 2000, 50, fmt.ms),
-      rowRange("Wyprzedzenie syntezy", "lookaheadS", 10, 90, 5, fmt.s),
+      rowToggle(t("panel.enabled"), "enabled"),
+      rowChoice(t("panel.language"), languageName(targetLang()), { kind: "language" }),
+      rowChoice(t("panel.engine"), engineName(s.engine), { kind: "engine" }),
+      rowChoice(t("panel.voice"), voiceName(s.engine, s.voice), { kind: "voice" }),
+      rowChoice(t("panel.translator"), translatorName(s.translator), { kind: "translator" }),
+      rowRange(t("panel.voiceVolume"), "voiceVolume", 0, 1, 0.05, fmt.pct, (v) => window.dispatchEvent(new CustomEvent("polarnik-live", { detail: { voiceVolume: v } }))),
+      rowRange(t("panel.ducking"), "duckingDb", -40, 0, 1, fmt.db),
+      rowRange(t("panel.speed"), "speed", 0.7, 1.5, 0.05, fmt.x),
+      rowRange(t("panel.maxRate"), "maxRate", 1.0, 1.6, 0.05, fmt.x),
+      rowChoice(t("panel.lagMode"), s.lagMode === "video" ? t("panel.lagVideoShort") : t("panel.lagSpeedShort"), { kind: "lagMode" }),
+      rowRange(t("panel.offset"), "offsetMs", -2000, 2000, 50, fmt.ms),
+      rowRange(t("panel.lookahead"), "lookaheadS", 10, 90, 5, fmt.s),
     );
     const foot = el("div", "polarnik-foot");
-    const status = serverMsg || (serverUp ? "serwer połączony" : "serwer niedostępny");
+    const status = serverMsg || (serverUp ? t("panel.serverUp") : t("panel.serverDown"));
     foot.innerHTML = `<span class="polarnik-server-status">${escape(status)}</span>`
-      + (serverUp || serverMsg ? "" : `<button type="button" class="polarnik-start">Uruchom serwer</button>`)
-      + `<a href="#">Wszystkie ustawienia…</a>`;
+      + (serverUp || serverMsg ? "" : `<button type="button" class="polarnik-start">${escape(t("common.startServer"))}</button>`)
+      + `<a href="#">${escape(t("panel.allSettings"))}</a>`;
     foot.querySelector("a").addEventListener("click", (e) => { e.preventDefault(); chrome.runtime.sendMessage({ type: "open_options" }); });
     foot.querySelector(".polarnik-start")?.addEventListener("click", startServer);
     root.appendChild(foot);
@@ -119,7 +128,7 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
     root.replaceChildren(head);
     if (!items.length) {
       const empty = el("div", "polarnik-row polarnik-empty");
-      empty.textContent = "brak pozycji – sprawdź połączenie z serwerem";
+      empty.textContent = t("panel.noItems");
       root.appendChild(empty);
     }
     for (const it of items) {
@@ -134,27 +143,37 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
   function render() {
     const s = getSettings();
     if (view.kind === "main") return renderMain();
+    const lang = targetLang();
+    if (view.kind === "language") {
+      const items = [{ id: "auto", name: t("panel.langAuto", { name: TARGET_LANGS[systemLang()] || "English" }) }]
+        .concat(Object.entries(TARGET_LANGS).map(([id, name]) => ({ id, name })));
+      return renderList(t("panel.language"), items, s.targetLang || "auto", (id) => saveSettings({ targetLang: id, voice: "" }));
+    }
     if (view.kind === "engine") {
-      const items = [{ id: "", name: "Domyślny serwera" }].concat(engines.map((e) => ({
-        id: e.id, name: e.name, disabled: !e.ready, note: e.ready ? "" : e.reason,
-      })));
-      return renderList("Silnik TTS", items, s.engine, (id) => saveSettings({ engine: id, voice: "" }));
+      const items = [{ id: "", name: t("panel.serverDefault") }].concat(engines.map((e) => {
+        const cannot = e.langs?.length && !e.langs.includes(lang);
+        return { id: e.id, name: e.name, disabled: !e.ready || cannot,
+                 note: !e.ready ? e.reason : cannot ? t("panel.engineNoLang", { name: TARGET_LANGS[lang] || lang }) : "" };
+      }));
+      return renderList(t("panel.engine"), items, s.engine, (id) => saveSettings({ engine: id, voice: "" }));
     }
     if (view.kind === "voice") {
       const e = engines.find((x) => x.id === s.engine) || engines.find((x) => x.ready && x.id !== "test_tone");
-      const items = [{ id: "", name: "Domyślny silnika" }].concat((e?.voices || []).map((v) => ({ id: v.id, name: v.name })));
-      return renderList(`Głos (${e ? e.id : "?"})`, items, s.voice, (id) => saveSettings({ voice: id }));
+      // only voices of the voice-over language, plus language-neutral ones (cloned samples, multilingual)
+      const voices = (e?.voices || []).filter((v) => !v.lang || v.lang === lang);
+      const items = [{ id: "", name: t("panel.engineDefault") }].concat(voices.map((v) => ({ id: v.id, name: v.name })));
+      return renderList(`${t("panel.voice")} (${e ? e.id : "?"})`, items, s.voice, (id) => saveSettings({ voice: id }));
     }
     if (view.kind === "translator") {
-      const items = [{ id: "youtube", name: "YouTube (automatyczne tłumaczenie)" }].concat(translators.filter((t) => t.id !== "youtube").map((t) => ({
-        id: t.id, name: t.name, disabled: !t.ready, note: t.ready ? (t.restores_punctuation ? "odtwarza interpunkcję" : "") : t.reason,
+      const items = [{ id: "youtube", name: t("panel.youtubeAutoLong") }].concat(translators.filter((x) => x.id !== "youtube").map((x) => ({
+        id: x.id, name: x.name, disabled: !x.ready, note: x.ready ? (x.restores_punctuation ? t("panel.restoresPunctuation") : "") : x.reason,
       })));
-      return renderList("Tłumacz napisów", items, s.translator, (id) => saveSettings({ translator: id }));
+      return renderList(t("panel.translator"), items, s.translator, (id) => saveSettings({ translator: id }));
     }
     if (view.kind === "lagMode") {
-      return renderList("Gdy lektor nie nadąża", [
-        { id: "speed", name: "Przyspiesz lektora (do maks. przyspieszenia)" },
-        { id: "video", name: "Zwolnij film, aż lektor dogoni" },
+      return renderList(t("panel.lagMode"), [
+        { id: "speed", name: t("panel.lagSpeed") },
+        { id: "video", name: t("panel.lagVideo") },
       ], s.lagMode, (id) => saveSettings({ lagMode: id }));
     }
   }
@@ -167,7 +186,7 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
   }
 
   async function startServer() {
-    serverMsg = "uruchamiam serwer…";
+    serverMsg = t("common.startingServer");
     render();
     const resp = await chrome.runtime.sendMessage({ type: "server_start" });
     if (resp?.ok && resp.running) {
@@ -177,8 +196,8 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
       onServerStarted?.();
     } else {
       serverMsg = resp?.hostMissing
-        ? "brak launchera – uruchom install_host.cmd"
-        : `nie udało się: ${resp?.error || "?"}`;
+        ? t("common.hostMissing")
+        : t("common.failed", { error: resp?.error || "?" });
       render();
       setTimeout(() => { serverMsg = ""; if (!root.hidden) render(); }, 6000);
     }

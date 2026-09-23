@@ -121,7 +121,7 @@ class IsolatedEngine(Engine):
         if resp.get("ready"):
             try:
                 v = self._call({"cmd": "voices"})
-                self._voices = [Voice(x["id"], x["name"]) for x in v.get("voices", [])]
+                self._voices = [Voice(x["id"], x["name"], x.get("lang", "")) for x in v.get("voices", [])]
                 self._default_voice = v.get("default_voice", "")
             except Exception as exc:  # noqa: BLE001
                 log.warning("%s: voices failed: %s", self.id, exc)
@@ -134,8 +134,8 @@ class IsolatedEngine(Engine):
     def default_voice(self) -> str:
         return self._default_voice or str(self.cfg.get("default_voice") or "")
 
-    def synthesize_sync(self, text: str, voice: str, speed: float) -> AudioResult:
-        resp = self._call({"cmd": "synthesize", "text": text, "voice": voice, "speed": speed})
+    def synthesize_sync(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
+        resp = self._call({"cmd": "synthesize", "text": text, "voice": voice, "speed": speed, "lang": lang})
         return AudioResult(data=base64.b64decode(resp["data_b64"]), mime=resp["mime"],
                            sample_rate=resp.get("sample_rate"), duration=resp.get("duration"))
 

@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "PolarnikTTS"
+  },
+  "extDescription": {
+    "message": "YouTube 字幕配音：把字幕翻译成你的语言，并用你选择的 TTS 引擎（本地或云端）朗读。"
+  }
+}

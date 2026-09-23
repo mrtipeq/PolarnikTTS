@@ -9,6 +9,7 @@
   const { loadSettings, saveSettings, onSettingsChanged, RESTART_KEYS } = await import(chrome.runtime.getURL("lib/settings.js"));
   const { createPanel } = await import(chrome.runtime.getURL("content/panel.js"));
   const { eventsToLines, linesToSentences, isPolishLike, parseTimedtext } = await import(chrome.runtime.getURL("content/captions.js"));
+  const { initI18n, resolveTargetLang, normalizeLangTag, youtubeTlang, TARGET_LANGS } = await import(chrome.runtime.getURL("lib/i18n.js"));
 
   const log = (...a) => console.info(TAG, ...a);
   const warn = (...a) => console.warn(TAG, ...a);
@@ -32,6 +33,8 @@
 
   // ---- state ----------------------------------------------------------------------
   let settings = await loadSettings();
+  let t = await initI18n(settings);
+  const targetLang = () => resolveTargetLang(settings);
   let session = null;      // active VoiceOverSession for the current video
   let notice = "";           // user-visible remark for the current video (cleared on restart)
   let button = null;       // player-bar button element
@@ -40,7 +43,9 @@
   onSettingsChanged((s) => {
     const needsRestart = RESTART_KEYS.some((k) => s[k] !== settings[k]);
     const wasEnabled = settings.enabled;
+    const uiChanged = s.uiLang !== settings.uiLang;
     settings = s;
+    if (uiChanged) initI18n(settings).then((tt) => { t = tt; updateButton(); panel?.rerender(); });
     updateButton();
     panel?.rerender();
     session?.applyLiveSettings();
@@ -71,6 +76,8 @@
           saveSettings,
           client: () => new ServerClient(settings.serverUrl, settings.serverToken),
           onServerStarted: () => restartSession(),
+          t: (key, subs) => t(key, subs),
+          targetLang,
         });
       }
       panel.toggle();
@@ -81,23 +88,23 @@
   }
 
   function modeLabel(mode) {
-    return { polish: "polskie napisy", youtube: "tłumaczenie YouTube", server: "tłumaczenie serwera" }[mode] || "…";
+    return { native: t("mode.native"), youtube: t("mode.youtube"), server: t("mode.server") }[mode] || "…";
   }
 
   function updateButton(status, detail) {
     if (!button) return;
     const st = !settings.enabled ? "off" : (status || session?.status || "idle");
     button.dataset.status = st;
-    const engine = settings.engine || "domyślny";
+    const engine = settings.engine || t("panel.default");
     const voice = settings.voice ? ` / ${settings.voice}` : "";
     const msgs = {
-      off: "PolarnikTTS: wyłączony (kliknij, aby włączyć)",
-      idle: `PolarnikTTS: włączony – ${engine}${voice}`,
-      loading: "PolarnikTTS: pobieram napisy…",
-      working: session?.hold ? "PolarnikTTS: tłumaczę pierwsze zdania (LLM)…"
-        : `PolarnikTTS: lektor aktywny (${modeLabel(session?.mode)}) – ${engine}${voice}` + (notice ? ` · ${notice}` : ""),
-      nocaptions: "PolarnikTTS: ten film nie ma napisów",
-      error: `PolarnikTTS: błąd – ${detail || session?.lastError || "?"}`,
+      off: `PolarnikTTS: ${t("status.off")}`,
+      idle: `PolarnikTTS: ${t("status.idle")} – ${engine}${voice}`,
+      loading: `PolarnikTTS: ${t("status.loading")}`,
+      working: session?.hold ? `PolarnikTTS: ${t("status.holding")}`
+        : `PolarnikTTS: ${t("status.working", { mode: modeLabel(session?.mode) })} – ${engine}${voice}` + (notice ? ` · ${notice}` : ""),
+      nocaptions: `PolarnikTTS: ${t("status.nocaptions")}`,
+      error: `PolarnikTTS: ${t("status.error", { error: detail || session?.lastError || "?" })}`,
     };
     button.title = msgs[st] || msgs.idle;
   }
@@ -188,13 +195,15 @@
       this.cursor = this.findCursor(this.video.currentTime * 1000, true);
     }
 
-    /** Pick the best caption track: manual Polish > manual original (English first) > auto (asr). */
-    static pickTrack(tracks) {
-      const base = (t) => (t.languageCode || "").split("-")[0].toLowerCase();
-      return tracks.find((t) => base(t) === "pl" && !t.kind)
-        || tracks.find((t) => base(t) === "en" && !t.kind)
-        || tracks.find((t) => !t.kind)
-        || tracks.find((t) => base(t) === "en")
+    /** Pick the best caption track: manual in the target language (spoken as is) > manual
+     *  original (English first) > auto-generated in the target language > any auto (English first). */
+    static pickTrack(tracks, target) {
+      const base = (x) => normalizeLangTag(x.languageCode || "");
+      return tracks.find((x) => base(x) === target && !x.kind)
+        || tracks.find((x) => base(x) === "en" && !x.kind)
+        || tracks.find((x) => !x.kind)
+        || tracks.find((x) => base(x) === target)
+        || tracks.find((x) => base(x) === "en")
         || tracks[0] || null;
     }
 
@@ -214,12 +223,14 @@
       }
       if (this.destroyed) return null;
       if (!ct.tracks.length) { log("no caption tracks reported by the player"); this.status = "nocaptions"; updateButton(); return null; }
-      const track = VoiceOverSession.pickTrack(ct.tracks);
+      const target = targetLang();
+      this.targetLang = target;
+      const track = VoiceOverSession.pickTrack(ct.tracks, target);
       const wantLang = track.languageCode, wantKind = track.kind || "";
       this.srcLang = wantLang.split("-")[0].toLowerCase();
-      if (this.srcLang === "pl") this.mode = "polish";                       // speak the Polish track as is
+      if (normalizeLangTag(wantLang) === target) this.mode = "native";      // the track is already in the target language
       else this.mode = (settings.translator === "youtube" || this.forceYoutube) ? "youtube" : "server";
-      const wantTlang = this.mode === "youtube" ? "pl" : "";
+      const wantTlang = this.mode === "youtube" ? youtubeTlang(target) : "";
       log("caption tracks:", ct.tracks.map((t) => `${t.languageCode}${t.kind ? "/" + t.kind : ""}`).join(", "),
         "-> using", wantLang, wantKind || "manual", wantTlang ? `translated to ${wantTlang} by YouTube` : "", `(${this.mode})`);
 
@@ -263,13 +274,13 @@
         if (!wasOn) page("hideCaptions");
         else page("setCaptionTrack", { languageCode: ct.current.languageCode, kind: ct.current.kind, translationLanguage: ct.current.translationLanguage });
       }
-      if (!body) throw new Error("YouTube nie zwrócił treści napisów (spróbuj odświeżyć stronę)");
+      if (!body) throw new Error(t("err.noCaptionBody"));
 
       const events = parseTimedtext(body);
-      if (!events) throw new Error("nieznany format napisów");
-      if (this.mode === "server" && events.length) {
+      if (!events) throw new Error(t("err.captionFormat"));
+      if (this.mode === "server" && events.length && target === "pl") {
         const sample = eventsToLines(events).slice(0, 20).map((l) => l.text).join(" ");
-        if (isPolishLike(sample)) this.mode = "polish";                       // mislabelled track
+        if (isPolishLike(sample)) this.mode = "native";                       // mislabelled track
       }
       return events;
     }
@@ -332,6 +343,7 @@
           contextBefore: this.sentences.slice(Math.max(0, first - 3), first).map((s) => s.pl || s.text),
           contextAfter: this.sentences.slice(last + 1, last + 4).map((s) => s.text),
           translator: settings.translator,
+          targetLang: this.targetLang,
         });
         res.translations.forEach((t, k) => { this.sentences[batch[k]].pl = t; });
         this.translatedCount += batch.length;
@@ -341,12 +353,12 @@
         if (this.destroyed) return;
         this.translateFailures++;
         warn(`translation failed (${this.translateFailures}):`, e.message);
-        this.lastError = `tłumaczenie: ${e.message}`;
+        this.lastError = t("err.translation", { error: e.message });
         if (this.translateFailures >= 2) {
           // Reading the untranslated text aloud would be useless - switch this video to
           // YouTube's auto-translate instead and say so in the button tooltip / popup.
           const why = e.message.replace(/^\/translate: /, "");
-          notice = `tłumacz „${settings.translator}” nie działa (${why.slice(0, 160)}) – ten film leci przez tłumaczenie YouTube`;
+          notice = t("notice.translatorFallback", { translator: settings.translator, error: why.slice(0, 160) });
           warn(notice);
           setTimeout(() => restartSession({ forceYoutube: true, notice }), 0);
           return;
@@ -374,7 +386,7 @@
     async synthesize(i) {
       const s = this.sentences[i];
       try {
-        const res = await this.client.tts({ text: s.pl, engine: settings.engine, voice: settings.voice, speed: settings.speed });
+        const res = await this.client.tts({ text: s.pl, engine: settings.engine, voice: settings.voice, speed: settings.speed, lang: this.targetLang });
         if (this.destroyed) return;
         const url = URL.createObjectURL(res.blob);
         let duration = res.duration;
@@ -382,7 +394,7 @@
         this.audio.set(i, { url, duration });
       } catch (e) {
         warn(`tts failed for #${i}:`, e.message);
-        this.lastError = /Failed to fetch/i.test(e.message) ? "serwer niedostępny (otwórz panel P → Uruchom serwer)" : `TTS: ${e.message}`;
+        this.lastError = /Failed to fetch/i.test(e.message) ? t("err.serverDown") : `TTS: ${e.message}`;
         this.audio.set(i, { url: null, duration: 0, error: e.message });
         updateButton("error", this.lastError);
       }

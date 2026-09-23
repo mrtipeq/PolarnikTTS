@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "PolarnikTTS"
+  },
+  "extDescription": {
+    "message": "Voice-over für YouTube-Untertitel: übersetzt die Untertitel in Ihre Sprache und liest sie mit der TTS-Engine Ihrer Wahl vor (lokal oder Cloud)."
+  }
+}

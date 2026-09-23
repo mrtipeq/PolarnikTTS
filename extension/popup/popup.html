@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>PolarnikTTS</title>
@@ -21,15 +21,15 @@
 <body>
   <h1><img src="../icons/icon16.png" alt="" width="16" height="16"> PolarnikTTS</h1>
   <div class="row">
-    <label class="switch"><input id="enabled" type="checkbox"> Lektor włączony</label>
+    <label class="switch"><input id="enabled" type="checkbox"> <span data-i18n="popup.enabled">Voice-over on</span></label>
   </div>
-  <div class="row"><span><span id="serverDot" class="dot"></span>Serwer</span><span id="serverText" class="muted">…</span></div>
-  <div class="row" id="startRow" hidden><span class="muted" id="startText"></span><button id="btnStart" type="button">Uruchom serwer</button></div>
-  <div class="row"><span><span id="capDot" class="dot"></span>Napisy na tej karcie</span><span id="capText" class="muted">…</span></div>
-  <div class="row"><span><span id="lekDot" class="dot"></span>Lektor</span><span id="lekText" class="muted">…</span></div>
+  <div class="row"><span><span id="serverDot" class="dot"></span><span data-i18n="popup.server">Server</span></span><span id="serverText" class="muted">…</span></div>
+  <div class="row" id="startRow" hidden><span class="muted" id="startText"></span><button id="btnStart" type="button" data-i18n="common.startServer">Start server</button></div>
+  <div class="row"><span><span id="capDot" class="dot"></span><span data-i18n="popup.captions">Captions on this tab</span></span><span id="capText" class="muted">…</span></div>
+  <div class="row"><span><span id="lekDot" class="dot"></span><span data-i18n="popup.voiceover">Voice-over</span></span><span id="lekText" class="muted">…</span></div>
   <div class="row" style="margin-top:10px">
     <span class="muted" id="engineText"></span>
-    <button id="btnOptions" type="button">Ustawienia</button>
+    <button id="btnOptions" type="button" data-i18n="popup.settings">Settings</button>
   </div>
   <div class="row muted" style="margin-top:8px;font-size:11px"><span id="aboutLine"></span><a href="https://tipson.pl" target="_blank" rel="noopener" style="color:inherit">tipson.pl</a></div>
   <script type="module" src="popup.js"></script>

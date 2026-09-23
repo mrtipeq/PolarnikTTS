@@ -49,15 +49,17 @@ class ElevenLabsEngine(Engine):
         voices = self.voices()
         return voices[0].id if voices else ""
 
-    async def synthesize(self, text: str, voice: str, speed: float = 1.0) -> AudioResult:
+    async def synthesize(self, text: str, voice: str, speed: float = 1.0, lang: str = "pl") -> AudioResult:
         voice_id = voice or self.default_voice
         fmt = self.cfg.get("output_format", "mp3_44100_128")
         body = {
             "text": text,
             "model_id": self.cfg.get("model_id", "eleven_flash_v2_5"),
-            "language_code": "pl",
+            # ISO 639-1 code; ElevenLabs has no separate Cantonese code
+            "language_code": "zh" if lang in ("zh", "yue") else (lang if len(lang) == 2 else None),
             "voice_settings": {"speed": float(min(max(speed, 0.7), 1.2))},
         }
+        body = {k: v for k, v in body.items() if v is not None}
         async with httpx.AsyncClient(timeout=60) as client:
             r = await client.post(f"{API}/text-to-speech/{voice_id}", params={"output_format": fmt},
                                   headers=self._headers(), json=body)

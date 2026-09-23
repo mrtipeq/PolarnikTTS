@@ -2,22 +2,24 @@
 
 export const DEFAULT_SETTINGS = {
   enabled: true,
+  uiLang: "auto",        // UI language: "auto" (system, English when untranslated) | code from lib/i18n.js UI_LANGS
+  targetLang: "auto",    // voice-over language: "auto" (system language) | code from TARGET_LANGS
   serverUrl: "http://127.0.0.1:8765",
   serverToken: "",
   engine: "",            // "" = server default
   voice: "",             // "" = engine default
   speed: 1.0,            // base speaking rate requested from the engine
   translator: "youtube", // "youtube" | id of a server-side translator
-  voiceVolume: 1.0,      // volume of the Polish voice (0..1)
-  duckingDb: -12,        // original audio level while the Polish voice speaks
-  offsetMs: 0,           // shift Polish speech relative to subtitle timing
+  voiceVolume: 1.0,      // volume of the voice-over (0..1)
+  duckingDb: -12,        // original audio level while the voice-over speaks
+  offsetMs: 0,           // shift the voice-over relative to subtitle timing
   lookaheadS: 30,        // how far ahead sentences are synthesized
   maxRate: 1.35,         // max playback speed-up used to fit a sentence into its slot
   lagMode: "speed",      // "speed": speed the voice up | "video": slow the video down when the voice lags
 };
 
 /** Settings whose change requires re-synthesizing (new session); the rest apply live. */
-export const RESTART_KEYS = ["serverUrl", "serverToken", "engine", "voice", "speed", "translator"];
+export const RESTART_KEYS = ["serverUrl", "serverToken", "engine", "voice", "speed", "translator", "targetLang"];
 
 export async function loadSettings() {
   const stored = await chrome.storage.local.get("settings");

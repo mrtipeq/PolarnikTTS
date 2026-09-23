@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 
 from ..audio import pcm16_to_wav
+from ..languages import LANGUAGES
 from .base import AudioResult, Engine, Voice, cuda_kernel_problem, pick_device
 
 
@@ -23,6 +24,7 @@ class ChatterboxEngine(Engine):
     licence = "MIT"
     serialize = True
     native_speed = False
+    langs = [c for c, m in LANGUAGES.items() if m.get("chatterbox")]
 
     def __init__(self, cfg, models_dir):
         super().__init__(cfg, models_dir)
@@ -70,11 +72,11 @@ class ChatterboxEngine(Engine):
 
         self._model = ChatterboxMultilingualTTS.from_pretrained(device=self._device)
 
-    def synthesize_sync(self, text: str, voice: str, speed: float) -> AudioResult:
+    def synthesize_sync(self, text: str, voice: str, speed: float, lang: str = "pl") -> AudioResult:
         import torch
 
         kwargs = {
-            "language_id": "pl",
+            "language_id": LANGUAGES.get(lang, {}).get("chatterbox") or "en",
             "exaggeration": float(self.cfg.get("exaggeration", 0.5)),
             "cfg_weight": float(self.cfg.get("cfg_weight", 0.5)),
         }

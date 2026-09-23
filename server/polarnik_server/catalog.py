@@ -10,15 +10,16 @@ from __future__ import annotations
 from typing import Any
 
 # Piper voices for Polish published in rhasspy/piper-voices.
-PIPER_PL_VOICES = [
-    {"id": "pl_PL-gosia-medium", "label": "Gosia (female, medium)", "size_mb": 63},
-    {"id": "pl_PL-darkman-medium", "label": "Darkman (male, medium)", "size_mb": 63},
-    {"id": "pl_PL-mc_speech-medium", "label": "MC Speech (male, medium)", "size_mb": 63},
-]
+from .languages import LANGUAGES
+
+# Downloadable Piper voices, one entry per voice, tagged with the language they speak.
+PIPER_VOICES = [{"id": vid, "label": label, "size_mb": mb, "lang": lang}
+                for lang, meta in LANGUAGES.items() for vid, label, mb in meta["piper"]]
+PIPER_PL_VOICES = [v for v in PIPER_VOICES if v["lang"] == "pl"]   # backwards compatibility
 
 ENGINES: dict[str, dict[str, Any]] = {
     "edge_tts": {
-        "name": "Microsoft Edge neural (Zofia, Marek)",
+        "name": "Microsoft Edge neural (all languages)",
         "extra": "edge",
         "kind": "cloud",
         "gpu": False,
@@ -33,7 +34,7 @@ ENGINES: dict[str, dict[str, Any]] = {
         "kind": "local-cpu",
         "gpu": False,
         "models": "piper",
-        "voices": PIPER_PL_VOICES,
+        "voices": PIPER_VOICES,
         "fields": [],
         "download_mb": 30,
     },
