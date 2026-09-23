@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PolarnikTTS",
-  "version": "0.6.2",
+  "version": "0.6.7",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu6loj/ktnX9QTq0oYIo/LWZru4JtGJ3KEidKGKJkbOoxV2ZrqYLD66YgW7PvfQFjFSOVT5xdseDYBlFgzOjEoDWINvHjTdSF2aNw5T5cNvXMBU+ZtEMZFNnZoaquAzfXfEVrzfCI26lRGb0vv7DKmEUEu3XuabE5TzlVCLpxoITI9y2duQI2NMd71qxi1igkOCIisrCrmnhEVhu0HYN7PhKoiiPkfLtZ9hBYOHh8kOK0W0/Xqu1wqWJ6aro1lwDVkJ8lnrkWyGzJ1QVFyq91iekb5PeHlPD3VxSA0dnXU6tfloZfSDrnlhFfHTPRk1r/zCa97ADNpcr4PAPh4rD4dQIDAQAB",
   "description": "Polski lektor do napisów na YouTube: tłumaczy napisy i czyta je wybranym silnikiem TTS (lokalnym lub chmurowym).",
   "author": "MrTip (Darek) – Tipson",

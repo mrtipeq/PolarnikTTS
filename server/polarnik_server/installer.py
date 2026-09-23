@@ -49,6 +49,41 @@ def torch_index(cuda_tag: str) -> str | None:
     return f"https://download.pytorch.org/whl/{cuda_tag}" if has_nvidia_driver() else None
 
 
+def gpu_compute_capability() -> float | None:
+    """Highest CUDA compute capability of the local GPUs (e.g. 7.5, 8.6, 12.0), via nvidia-smi."""
+    if not has_nvidia_driver():
+        return None
+    kwargs: dict[str, Any] = {"capture_output": True, "text": True, "timeout": 15}
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"], **kwargs).stdout  # noqa: S603, S607
+        caps = [float(x.strip()) for x in out.splitlines() if x.strip()]
+        return max(caps) if caps else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+# Oldest PyTorch build with kernels for Blackwell GPUs (sm_100 data-centre, sm_120 RTX 50xx).
+BLACKWELL_TORCH = {"version": "2.7.1", "cuda": "cu128"}
+
+
+def _version_tuple(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in v.split(".") if x.isdigit())
+
+
+def resolve_torch_spec(meta: dict[str, Any], log: LogFn) -> dict[str, Any]:
+    """The catalog pin, bumped when the GPU is newer than that build supports."""
+    spec = dict(meta.get("torch") or {})
+    cap = gpu_compute_capability()
+    if cap is not None and cap >= 10.0 and spec.get("version") and _version_tuple(spec["version"]) < (2, 7):
+        log(f"GPU compute capability {cap} (Blackwell) needs PyTorch >= 2.7 with CUDA 12.8 - using "
+            f"{BLACKWELL_TORCH['version']}+{BLACKWELL_TORCH['cuda']} instead of the package's pin "
+            f"{spec['version']}+{spec.get('cuda', '')}")
+        spec.update(BLACKWELL_TORCH)
+    return spec
+
+
 def extra_installed(extra: str | None) -> bool:
     """Is a server-venv extra importable in *this* process?"""
     if not extra:
@@ -125,19 +160,25 @@ def _install_isolated(engine_id: str, meta: dict[str, Any], server_dir: Path, mo
     if run_logged([str(py), "-m", "pip", "install", "--upgrade", "pip", "wheel"], server_dir, log) != 0:
         raise RuntimeError("pip upgrade failed")
 
-    torch_spec = meta.get("torch") or {}
+    torch_spec = resolve_torch_spec(meta, log)
     ver = torch_spec.get("version") or ""
     idx = torch_index(torch_spec.get("cuda", "cu128"))
     pkgs = [f"torch=={ver}" if ver else "torch", f"torchaudio=={ver}" if ver else "torchaudio"]
     log(f"Installing PyTorch {ver or '(latest)'} {'with CUDA ' + torch_spec.get('cuda', '') if idx else 'CPU-only (no NVIDIA driver found)'}")
-    cmd = [str(py), "-m", "pip", "install", *pkgs] + (["--index-url", idx] if idx else [])
-    if run_logged(cmd, server_dir, log) != 0:
+    torch_cmd = [str(py), "-m", "pip", "install", *pkgs] + (["--index-url", idx] if idx else [])
+    if run_logged(torch_cmd, server_dir, log) != 0:
         raise RuntimeError("PyTorch installation failed")
 
     # numpy + soundfile are needed by the worker/base engine code as well
     cmd = [str(py), "-m", "pip", "install", *meta["packages"], "numpy", "soundfile"]
     if run_logged(cmd, server_dir, log) != 0:
         raise RuntimeError("engine package installation failed")
+
+    # The package may pin an older torch (chatterbox-tts: torch==2.6.0) and pip then replaces the
+    # build installed above with a PyPI one. Re-assert the wanted build; pip only warns about the
+    # version conflict and the engines work with the newer torch. No-op when nothing changed.
+    if ver and run_logged(torch_cmd, server_dir, log) != 0:
+        raise RuntimeError("PyTorch re-installation failed")
     _ISOLATED_CACHE.pop(engine_id, None)
 
     log("Downloading model weights (this can take a while)…")

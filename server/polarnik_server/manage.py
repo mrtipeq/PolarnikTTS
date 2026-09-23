@@ -7,6 +7,7 @@ Long operations run as background jobs whose log can be polled.
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 import os
 import shutil
@@ -18,6 +19,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -93,6 +95,10 @@ class InstallRequest(BaseModel):
 class ImportBundle(BaseModel):
     config: dict[str, Any]
     samples: list[dict[str, Any]] = []
+
+
+class OllamaPull(BaseModel):
+    model: str
 
 
 def build_router(state) -> APIRouter:  # noqa: C901 - one place for all management endpoints
@@ -366,6 +372,129 @@ def build_router(state) -> APIRouter:  # noqa: C901 - one place for all manageme
                 log.warning("sample %s skipped: %s", smp.get("name"), exc)
         reload_engines()
         return {"ok": True, "samples_imported": n}
+
+    # ---- Ollama (local LLM translator): pulled models and model download -------------
+    def ollama_host() -> str:
+        cfg = load_yaml(config_path)
+        base = str(((cfg.get("translators") or {}).get("ollama") or {}).get("base_url")
+                   or TRANSLATORS["ollama"]["defaults"]["base_url"])
+        return base.rstrip("/").removesuffix("/v1")
+
+    @router.get("/ollama")
+    async def ollama_status(request: Request) -> dict[str, Any]:
+        """Is Ollama reachable, which models are pulled, is the configured one among them?"""
+        guard(request)
+        cfg = load_yaml(config_path)
+        model = str(((cfg.get("translators") or {}).get("ollama") or {}).get("model")
+                    or TRANSLATORS["ollama"]["defaults"]["model"])
+        host = ollama_host()
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                r = await client.get(host + "/api/tags")
+                r.raise_for_status()
+            models = [m.get("name", "") for m in r.json().get("models", [])]
+        except Exception as exc:  # noqa: BLE001
+            return {"running": False, "host": host, "model": model, "models": [], "pulled": False,
+                    "error": f"{type(exc).__name__}: {exc}"}
+        norm = lambda n: n if ":" in n else n + ":latest"  # noqa: E731
+        pulled = norm(model) in {norm(m) for m in models}
+        return {"running": True, "host": host, "model": model, "models": models, "pulled": pulled}
+
+    @router.post("/ollama/pull")
+    async def ollama_pull(request: Request, req: OllamaPull) -> dict[str, Any]:
+        """Download a model through Ollama's own API (streams progress into a job log)."""
+        guard(request)
+        model = req.model.strip()
+        if not model:
+            raise HTTPException(status_code=400, detail="model required")
+        host = ollama_host()
+        with _JOB_LOCK:
+            if any(j.status == "running" for j in JOBS.values()):
+                raise HTTPException(status_code=409, detail="another installation is already running")
+            job = Job("ollama-pull", model)
+            JOBS[job.id] = job
+
+        def work() -> None:
+            last = ""
+            try:
+                job.write(f"ollama pull {model}  (via {host}/api/pull)")
+                with httpx.Client(timeout=httpx.Timeout(30.0, read=None)) as client, \
+                        client.stream("POST", host + "/api/pull", json={"name": model, "stream": True}) as r:
+                    r.raise_for_status()
+                    for raw in r.iter_lines():
+                        if not raw:
+                            continue
+                        try:
+                            ev = json.loads(raw)
+                        except ValueError:
+                            continue
+                        if ev.get("error"):
+                            raise RuntimeError(ev["error"])
+                        status = ev.get("status", "")
+                        total, done = ev.get("total"), ev.get("completed")
+                        if total and done is not None:
+                            line = f"{status}: {done / 1e9:.2f} / {total / 1e9:.2f} GB ({100 * done / total:.0f}%)"
+                        else:
+                            line = status
+                        if line and line != last:
+                            job.write(line)
+                            last = line
+                job.write("Done.")
+                job.status = "done"
+            except Exception as exc:  # noqa: BLE001
+                job.error = str(exc)
+                job.write(f"ERROR: {exc}")
+                job.status = "failed"
+            finally:
+                job.finished = time.time()
+
+        threading.Thread(target=work, name=f"ollama-pull-{model}", daemon=True).start()
+        return {"job": job.to_dict()}
+
+    # ---- model discovery for OpenAI-compatible providers ------------------------------
+    ENGINE_MODEL_ENDPOINTS = {
+        "openai_tts": ("https://api.openai.com/v1", "openai", lambda m: "tts" in m),
+        "gemini_tts": ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini", lambda m: "tts" in m),
+    }
+
+    @router.get("/models")
+    async def list_models(request: Request, section: str, id: str) -> dict[str, Any]:
+        """GET <base_url>/models with the configured key - which model ids does this key see?"""
+        guard(request)
+        cfg = load_yaml(config_path)
+        if section == "translators":
+            meta = TRANSLATORS.get(id)
+            if meta is None or meta.get("type") != "openai_compat":
+                raise HTTPException(status_code=404, detail="no model listing for this translator")
+            entry = (cfg.get("translators") or {}).get(id) or {}
+            base = str(entry.get("base_url") or meta["defaults"].get("base_url") or "")
+            key = str(entry.get("api_key") or meta["defaults"].get("api_key") or "")
+            keep = lambda m: True  # noqa: E731
+        elif section == "engines" and id in ENGINE_MODEL_ENDPOINTS:
+            base, tr_id, keep = ENGINE_MODEL_ENDPOINTS[id]
+            entry = (cfg.get("engines") or {}).get(id) or {}
+            key = str(entry.get("api_key") or ((cfg.get("translators") or {}).get(tr_id) or {}).get("api_key") or "")
+        else:
+            raise HTTPException(status_code=404, detail="no model listing for this item")
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.get(base.rstrip("/") + "/models", headers=headers)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=f"cannot reach {base}: {type(exc).__name__}: {exc}") from exc
+        if r.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"HTTP {r.status_code} from {base}/models: {r.text[:300]}")
+        data = r.json()
+        items = data.get("data") if isinstance(data, dict) else data
+        ids = []
+        for m in items or []:
+            mid = m.get("id") if isinstance(m, dict) else str(m)
+            if not mid:
+                continue
+            mid = str(mid).removeprefix("models/")
+            if keep(mid):
+                ids.append(mid)
+        return {"base_url": base, "models": sorted(set(ids))}
 
     @router.post("/reload")
     async def reload(request: Request) -> dict[str, Any]:

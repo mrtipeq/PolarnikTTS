@@ -17,6 +17,12 @@ TRANSLATOR_CLASSES: dict[str, type[Translator]] = {
 }
 
 
+def _catalog_type(tid: str) -> str | None:
+    from ..catalog import TRANSLATORS
+
+    return (TRANSLATORS.get(tid) or {}).get("type")
+
+
 def build_translators(translators_cfg: dict[str, Any]) -> tuple[dict[str, Translator], str]:
     """Instantiate enabled translators. Returns (translators, default_id)."""
     out: dict[str, Translator] = {}
@@ -26,7 +32,8 @@ def build_translators(translators_cfg: dict[str, Any]) -> tuple[dict[str, Transl
             continue
         if not cfg.get("enabled", False):
             continue
-        cls = TRANSLATOR_CLASSES.get(str(cfg.get("type", tid)))
+        type_id = str(cfg.get("type") or _catalog_type(tid) or tid)
+        cls = TRANSLATOR_CLASSES.get(type_id)
         if cls is None:
             log.warning("Unknown translator type for '%s' - skipped", tid)
             continue

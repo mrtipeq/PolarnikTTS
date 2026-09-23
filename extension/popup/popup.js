@@ -63,13 +63,21 @@ async function init() {
   // Pipeline status from the content script
   try {
     const info = await chrome.tabs.sendMessage(tab.id, { type: "page_info" });
+    const modeText = { polish: "napisy PL", youtube: "tłum. YouTube", server: `tłum. LLM, ${info.translated} przetł.` }[info.mode] || "?";
     const labels = {
       off: "wyłączony", idle: "czeka na film", loading: "pobieram napisy…",
-      working: `mówi (${info.cursor}/${info.sentences} zdań, ${{ polish: "napisy PL", youtube: "tłum. YouTube", server: "tłum. serwer" }[info.mode] || "?"})`,
+      working: info.holding ? "tłumaczę pierwsze zdania…" : `mówi (${info.cursor}/${info.sentences} zdań, ${modeText})`,
       nocaptions: "film bez napisów", error: `błąd: ${info.lastError}`,
     };
     $("lekText").textContent = labels[info.status] || info.status;
     $("lekDot").className = "dot " + (info.status === "working" ? "ok" : info.status === "error" ? "err" : "");
+    if (info.notice) {
+      const row = document.createElement("div");
+      row.className = "row muted";
+      row.style.cssText = "font-size:11px;line-height:1.35;display:block";
+      row.textContent = "⚠ " + info.notice;
+      $("lekText").closest(".row").insertAdjacentElement("afterend", row);
+    }
   } catch {
     $("lekText").textContent = "odśwież kartę YouTube";
   }

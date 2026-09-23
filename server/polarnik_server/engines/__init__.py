@@ -6,26 +6,36 @@ import logging
 from typing import Any
 
 from .base import AudioResult, Engine, EngineInfo, Voice  # noqa: F401
-from .chatterbox_engine import ChatterboxEngine
-from .edge_tts_engine import EdgeTtsEngine
-from .elevenlabs_engine import ElevenLabsEngine
-from .gemini_tts_engine import GeminiTtsEngine
-from .isolated_engine import IsolatedEngine
-from .openai_tts_engine import OpenAITtsEngine
-from .piper_engine import PiperEngine
-from .test_tone import TestToneEngine
-from .xtts_engine import XttsEngine
 
 log = logging.getLogger(__name__)
 
-ENGINE_CLASSES: dict[str, type[Engine]] = {
-    cls.id: cls
-    for cls in (TestToneEngine, EdgeTtsEngine, PiperEngine, ChatterboxEngine, XttsEngine, ElevenLabsEngine,
-                OpenAITtsEngine, GeminiTtsEngine)
+# Engine modules are imported lazily: the isolated workers (chatterbox, xtts) import this
+# package from a virtualenv that has neither httpx (cloud engines) nor edge-tts/piper, so an
+# eager import of every engine here would break them.
+_ENGINE_MODULES: dict[str, tuple[str, str]] = {
+    "test_tone": ("test_tone", "TestToneEngine"),
+    "edge_tts": ("edge_tts_engine", "EdgeTtsEngine"),
+    "piper": ("piper_engine", "PiperEngine"),
+    "chatterbox": ("chatterbox_engine", "ChatterboxEngine"),
+    "xtts": ("xtts_engine", "XttsEngine"),
+    "elevenlabs": ("elevenlabs_engine", "ElevenLabsEngine"),
+    "openai_tts": ("openai_tts_engine", "OpenAITtsEngine"),
+    "gemini_tts": ("gemini_tts_engine", "GeminiTtsEngine"),
 }
 
 # Engines that run in their own virtualenv/process (see isolated_engine.py).
-ISOLATED: dict[str, type[Engine]] = {"chatterbox": ChatterboxEngine, "xtts": XttsEngine}
+ISOLATED_IDS = ("chatterbox", "xtts")
+
+
+def engine_class(type_id: str) -> type[Engine] | None:
+    """Import and return the Engine subclass for a catalog id (None when unknown)."""
+    entry = _ENGINE_MODULES.get(type_id)
+    if entry is None:
+        return None
+    import importlib
+
+    module = importlib.import_module(f".{entry[0]}", __name__)
+    return getattr(module, entry[1])
 
 
 # Cloud TTS engines that may reuse the API key of the translator of the same provider.
@@ -48,14 +58,17 @@ def build_engines(engines_cfg: dict[str, dict[str, Any]], models_dir, server_dir
             tcfg = (translators_cfg or {}).get(KEY_FROM_TRANSLATOR[type_id]) or {}
             if tcfg.get("api_key"):
                 cfg = {**cfg, "api_key": tcfg["api_key"]}
-        if type_id in ISOLATED:
+        if type_id in ISOLATED_IDS:
+            from .isolated_engine import IsolatedEngine
+
             cfg = {**cfg, "_samples_dir": str(server_dir / "voices")}
-            direct = ISOLATED[type_id]
+            direct = engine_class(type_id)
+            assert direct is not None
             engine: Engine = IsolatedEngine(engine_id, cfg, Path(models_dir), server_dir,
                                             name=direct.name, licence=direct.licence,
                                             native_speed=getattr(direct, "native_speed", True))
         else:
-            cls = ENGINE_CLASSES.get(type_id)
+            cls = engine_class(type_id)
             if cls is None:
                 log.warning("Unknown engine '%s' in config - skipped", engine_id)
                 continue

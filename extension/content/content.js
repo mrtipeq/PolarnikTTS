@@ -33,6 +33,7 @@
   // ---- state ----------------------------------------------------------------------
   let settings = await loadSettings();
   let session = null;      // active VoiceOverSession for the current video
+  let notice = "";           // user-visible remark for the current video (cleared on restart)
   let button = null;       // player-bar button element
   let panel = null;        // in-player settings panel
 
@@ -93,7 +94,8 @@
       off: "PolarnikTTS: wyłączony (kliknij, aby włączyć)",
       idle: `PolarnikTTS: włączony – ${engine}${voice}`,
       loading: "PolarnikTTS: pobieram napisy…",
-      working: `PolarnikTTS: lektor aktywny (${modeLabel(session?.mode)}) – ${engine}${voice}`,
+      working: session?.hold ? "PolarnikTTS: tłumaczę pierwsze zdania (LLM)…"
+        : `PolarnikTTS: lektor aktywny (${modeLabel(session?.mode)}) – ${engine}${voice}` + (notice ? ` · ${notice}` : ""),
       nocaptions: "PolarnikTTS: ten film nie ma napisów",
       error: `PolarnikTTS: błąd – ${detail || session?.lastError || "?"}`,
     };
@@ -134,7 +136,7 @@
 
   // ---- the session: one per video ------------------------------------------------
   class VoiceOverSession {
-    constructor(videoId, video) {
+    constructor(videoId, video, forceYoutube = false) {
       this.videoId = videoId;
       this.video = video;
       this.status = "loading";
@@ -146,6 +148,10 @@
       this.cursor = 0;
       this.current = null;          // {index, el}
       this.destroyed = false;
+      this.translateFailures = 0;   // consecutive failed translation batches
+      this.translatedCount = 0;
+      this.forceYoutube = forceYoutube;
+      this.hold = null;             // {until} while the video is paused waiting for the first LLM batch
       this.client = new ServerClient(settings.serverUrl, settings.serverToken);
       this.nativeSpeed = true;      // does the engine honour the speed setting itself?
       this.client.engines().then((list) => {
@@ -171,6 +177,11 @@
       log(`${this.sentences.length} sentences (${this.mode}) for ${this.videoId}`);
       if (!this.sentences.length) { this.status = "nocaptions"; updateButton(); return; }
       if (this.mode !== "server") this.sentences.forEach((s) => { s.pl = s.text; });
+      else if (!this.video.paused) {
+        this.hold = { until: Date.now() + 20000 };
+        // the user pressing play while we hold means "go on without waiting"
+        this.video.addEventListener("play", () => { this.hold = null; }, { once: true });
+      }
       this.status = "working";
       updateButton();
       // Reposition the cursor to the current playhead and let tick() drive everything.
@@ -192,14 +203,22 @@
     async loadCaptions() {
       const info = await page("playerInfo");
       if (!info.ready) throw new Error("player not ready");
-      const ct = await page("captionTracks");
-      if (!ct.ok) throw new Error(ct.error);
-      if (!ct.tracks.length) { this.status = "nocaptions"; updateButton(); return null; }
+      // Right after navigation the player may not have its caption list yet - poll briefly
+      // before concluding the video has no captions at all.
+      let ct = null;
+      for (let attempt = 0; attempt < 8 && !this.destroyed; attempt++) {
+        ct = await page("captionTracks");
+        if (!ct.ok) throw new Error(ct.error);
+        if (ct.tracks.length) break;
+        await new Promise((res) => setTimeout(res, 400));
+      }
+      if (this.destroyed) return null;
+      if (!ct.tracks.length) { log("no caption tracks reported by the player"); this.status = "nocaptions"; updateButton(); return null; }
       const track = VoiceOverSession.pickTrack(ct.tracks);
       const wantLang = track.languageCode, wantKind = track.kind || "";
       this.srcLang = wantLang.split("-")[0].toLowerCase();
       if (this.srcLang === "pl") this.mode = "polish";                       // speak the Polish track as is
-      else this.mode = settings.translator === "youtube" ? "youtube" : "server";
+      else this.mode = (settings.translator === "youtube" || this.forceYoutube) ? "youtube" : "server";
       const wantTlang = this.mode === "youtube" ? "pl" : "";
       log("caption tracks:", ct.tracks.map((t) => `${t.languageCode}${t.kind ? "/" + t.kind : ""}`).join(", "),
         "-> using", wantLang, wantKind || "manual", wantTlang ? `translated to ${wantTlang} by YouTube` : "", `(${this.mode})`);
@@ -305,6 +324,7 @@
       if (!batch.length) return;
       batch.forEach((i) => this.translating.add(i));
       const first = batch[0], last = batch[batch.length - 1];
+      const t0 = performance.now();
       try {
         const res = await this.client.translate({
           sentences: batch.map((i) => this.sentences[i].text),
@@ -314,10 +334,25 @@
           translator: settings.translator,
         });
         res.translations.forEach((t, k) => { this.sentences[batch[k]].pl = t; });
+        this.translatedCount += batch.length;
+        this.translateFailures = 0;
+        log(`translated ${batch.length} sentences (${first}-${last}) in ${Math.round(performance.now() - t0)} ms`);
       } catch (e) {
-        warn("translation failed, falling back to original text for this batch:", e.message);
-        batch.forEach((i) => { this.sentences[i].pl = this.sentences[i].text; });
+        if (this.destroyed) return;
+        this.translateFailures++;
+        warn(`translation failed (${this.translateFailures}):`, e.message);
         this.lastError = `tłumaczenie: ${e.message}`;
+        if (this.translateFailures >= 2) {
+          // Reading the untranslated text aloud would be useless - switch this video to
+          // YouTube's auto-translate instead and say so in the button tooltip / popup.
+          const why = e.message.replace(/^\/translate: /, "");
+          notice = `tłumacz „${settings.translator}” nie działa (${why.slice(0, 160)}) – ten film leci przez tłumaczenie YouTube`;
+          warn(notice);
+          setTimeout(() => restartSession({ forceYoutube: true, notice }), 0);
+          return;
+        }
+        // leave the sentences untranslated so the next tick retries them after a short pause
+        await new Promise((res) => setTimeout(res, 1500));
       } finally {
         batch.forEach((i) => this.translating.delete(i));
       }
@@ -370,6 +405,23 @@
       if (this.current) {
         if (v.paused && !this.current.el.paused) this.current.el.pause();
         else if (!v.paused && this.current.el.paused && !this.current.el.ended) this.current.el.play().catch(() => {});
+      }
+
+      // LLM translation of the first batch takes a few seconds; hold the video until the
+      // sentence at the playhead has its audio, so the user does not get a silent start.
+      if (this.hold) {
+        const idx = this.findCursor(tMs);
+        const ready = idx >= this.sentences.length || this.sentences[idx].start > tMs + 3000 || this.audio.has(idx);
+        if (ready || Date.now() > this.hold.until || this.translateFailures) {
+          this.hold = null;
+          if (v.paused) v.play().catch(() => {});
+          updateButton();
+        } else {
+          if (!v.paused) v.pause();
+          this.ensureTranslated(this.cursor, this.findCursor(tMs + settings.lookaheadS * 1000));
+          this.ensureSynthesized(this.cursor, this.cursor + 1);
+          return;
+        }
       }
       if (v.paused) return;
 
@@ -489,9 +541,10 @@
     return location.pathname === "/watch" ? new URLSearchParams(location.search).get("v") : null;
   }
 
-  async function restartSession() {
+  async function restartSession(opts = {}) {
     session?.destroy();
     session = null;
+    notice = opts.notice || "";
     const videoId = currentVideoId();
     const video = document.querySelector("video.html5-main-video");
     if (!videoId || !video || !settings.enabled) { updateButton(); return; }
@@ -501,7 +554,7 @@
       if (info.ready && info.videoId === videoId) break;
       await new Promise((r) => setTimeout(r, 250));
     }
-    session = new VoiceOverSession(videoId, video);
+    session = new VoiceOverSession(videoId, video, !!opts.forceYoutube);
   }
 
   function onNavigate() {
@@ -528,6 +581,9 @@
         cursor: session?.cursor || 0,
         mode: session?.mode || null,
         lastError: session?.lastError || "",
+        notice,
+        translated: session?.translatedCount || 0,
+        holding: !!session?.hold,
       });
     }
     return false;

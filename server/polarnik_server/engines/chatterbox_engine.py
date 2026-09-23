@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 from ..audio import pcm16_to_wav
-from .base import AudioResult, Engine, Voice, pick_device
+from .base import AudioResult, Engine, Voice, cuda_kernel_problem, pick_device
 
 
 class ChatterboxEngine(Engine):
@@ -35,6 +35,10 @@ class ChatterboxEngine(Engine):
         except ImportError:
             return False, "chatterbox-tts not installed (install from the options page or scripts/install_engine.py chatterbox)"
         self._device = pick_device(str(self.cfg.get("device", "auto")))
+        if self._device == "cuda":
+            problem = cuda_kernel_problem()
+            if problem:
+                return False, problem
         if self._device == "cpu" and str(self.cfg.get("device", "auto")) == "auto":
             return True, "CUDA not available - running on CPU will be very slow"
         return True, ""

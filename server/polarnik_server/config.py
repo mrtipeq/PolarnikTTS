@@ -40,6 +40,23 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
+def migrate_models(data: dict[str, Any]) -> bool:
+    """Replace retired provider model ids in-place (see catalog.RETIRED_MODELS). Returns True if changed."""
+    from .catalog import RETIRED_MODELS
+
+    changed = False
+    for section, key in (("translators", "model"), ("engines", "model_id")):
+        for name, entry in (data.get(section) or {}).items():
+            if not isinstance(entry, dict):
+                continue
+            old = entry.get(key)
+            if isinstance(old, str) and old in RETIRED_MODELS:
+                entry[key] = RETIRED_MODELS[old]
+                log.warning("%s.%s: model '%s' was retired by the provider - switched to '%s'", section, name, old, entry[key])
+                changed = True
+    return changed
+
+
 class Config:
     """Typed-ish access to the YAML configuration."""
 
@@ -60,6 +77,10 @@ class Config:
             with open(path, "r", encoding="utf-8") as fh:
                 data = yaml.safe_load(fh) or {}
             log.info("Loaded configuration from %s", path)
+            if migrate_models(data):
+                with open(path, "w", encoding="utf-8") as fh:
+                    yaml.safe_dump(data, fh, allow_unicode=True, sort_keys=False)
+                log.info("Configuration updated with replacement model ids")
         else:
             log.warning("No config.yaml found, using built-in defaults (test_tone engine only)")
         return cls(_deep_merge(DEFAULTS, data), base_dir)

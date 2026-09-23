@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from ..audio import pcm16_to_wav
-from .base import AudioResult, Engine, Voice, pick_device
+from .base import AudioResult, Engine, Voice, cuda_kernel_problem, pick_device
 
 XTTS_MODEL = "tts_models/multilingual/multi-dataset/xtts_v2"
 # A few of the built-in studio speakers that sound acceptable in Polish.
@@ -40,6 +40,10 @@ class XttsEngine(Engine):
         except ImportError:
             return False, "coqui-tts not installed (install from the options page or scripts/install_engine.py xtts)"
         self._device = pick_device(str(self.cfg.get("device", "auto")))
+        if self._device == "cuda":
+            problem = cuda_kernel_problem()
+            if problem:
+                return False, problem
         if self._device == "cpu":
             return True, "CUDA not available - XTTS on CPU is slow"
         return True, ""

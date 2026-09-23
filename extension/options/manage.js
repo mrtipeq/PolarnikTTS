@@ -37,6 +37,12 @@ const FIELD_LABEL = {
   instructions: "Instrukcja stylu (jak ma czytać)",
 };
 
+// Which items can list their provider's models (GET <base_url>/models via the server).
+const MODEL_LISTING = {
+  translators: (t) => ["openai", "gemini", "ollama"].includes(t.id),
+  engines: (e) => ["openai_tts", "gemini_tts"].includes(e.id),
+};
+
 const TRANSLATOR_TEXT = {
   openai: "OpenAI (GPT) – chmura, klucz API",
   gemini: "Google Gemini – chmura, klucz API",
@@ -138,6 +144,33 @@ export function createManager({ root, getClient, onChanged }) {
         tools.append(eye, copy);
         row.appendChild(tools);
       }
+      if ((f.key === "model" || f.key === "model_id") && MODEL_LISTING[section]?.(item)) {
+        // Ask the provider which model ids this key can use (providers retire models).
+        const tools = h("span", "secret-tools");
+        const btn = h("button", "icon", "☰"); btn.type = "button"; btn.title = "Pobierz listę modeli od dostawcy";
+        btn.addEventListener("click", async (ev) => {
+          ev.preventDefault();
+          btn.disabled = true;
+          try {
+            const r = await getClient().manageModels(section, item.id);
+            if (!r.models.length) { note("dostawca nie zwrócił żadnych modeli", true); return; }
+            const pick = h("select");
+            pick.appendChild(new Option("– wybierz model z listy –", ""));
+            for (const m of r.models) pick.appendChild(new Option(m, m));
+            pick.addEventListener("change", () => {
+              if (!pick.value) return;
+              if (input.tagName === "SELECT" && ![...input.options].some((o) => o.value === pick.value)) input.appendChild(new Option(pick.value, pick.value));
+              input.value = pick.value;
+              input.dataset.dirty = "1";
+              note(`wybrano ${pick.value} – kliknij „Zapisz”`);
+            });
+            tools.replaceChildren(btn, pick);
+          } catch (e) { note(`lista modeli: ${e.message}`, true); }
+          finally { btn.disabled = false; }
+        });
+        tools.appendChild(btn);
+        row.appendChild(tools);
+      }
       form.appendChild(row);
     }
     const save = h("button", "", "Zapisz");
@@ -160,6 +193,14 @@ export function createManager({ root, getClient, onChanged }) {
     if (!e.installed || (e.installed && e.models_ok === false && e.models !== "piper" && e.id !== "piper")) {
       const b = h("button", "primary", e.installed ? "Pobierz model" : `Zainstaluj${e.download_mb ? ` (~${e.download_mb >= 1000 ? (e.download_mb / 1000).toFixed(1) + " GB" : e.download_mb + " MB"})` : ""}`);
       b.type = "button";
+      b.addEventListener("click", () => startJob(e.id));
+      actions.appendChild(b);
+    }
+    if (e.installed && e.isolated && e.enabled && !e.ready && /reinstall/i.test(e.reason || "")) {
+      // e.g. torch build without kernels for this GPU (RTX 50xx) - the installer picks a matching build
+      const b = h("button", "primary", "Przeinstaluj (napraw PyTorch dla tej karty)");
+      b.type = "button";
+      b.title = e.reason;
       b.addEventListener("click", () => startJob(e.id));
       actions.appendChild(b);
     }
@@ -312,13 +353,56 @@ export function createManager({ root, getClient, onChanged }) {
     card.appendChild(actions);
     const form = fieldsForm("translators", t);
     if (form) card.appendChild(form);
+    if (t.id === "ollama") card.appendChild(ollamaBlock(t));
     return card;
+  }
+
+  const OLLAMA_SUGGESTIONS = [
+    ["SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M", "6,7 GB – najlepsza jakość, karta ≥ 8 GB VRAM"],
+    ["SpeakLeash/bielik-4.5b-v3.0-instruct:Q8_0", "5,1 GB – dobry kompromis, karta 6 GB"],
+    ["SpeakLeash/bielik-1.5b-v3.0-instruct", "~1,7 GB – szybki, słabszy"],
+    ["gemma3:4b", "3,3 GB – model Google, dobrze zna polski"],
+  ];
+
+  // Ollama: is it running, is the configured model pulled, one-click pull.
+  function ollamaBlock(t) {
+    const box = h("div", "ollama");
+    box.innerHTML = `<p class="muted">sprawdzam Ollamę…</p>`;
+    getClient().manageOllama().then((st) => {
+      box.innerHTML = "";
+      if (!st.running) {
+        box.innerHTML = `<p class="muted">${badge("Ollama nie odpowiada", "err")} pod ${esc(st.host)} – zainstaluj z <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a> i uruchom (ikona w zasobniku). ${esc(st.error || "")}</p>`;
+        return;
+      }
+      const head = h("p", "muted");
+      head.innerHTML = `${badge("Ollama działa", "ok")} pobrane modele: ${st.models.length ? st.models.map((m) => `<code>${esc(m)}</code>`).join(", ") : "<i>żaden</i>"}`;
+      box.appendChild(head);
+      const line = h("div", "actions");
+      if (st.pulled) {
+        line.innerHTML = badge(`model ${st.model} pobrany`, "ok");
+      } else {
+        line.innerHTML = badge(`model ${st.model} nie jest pobrany`, "warn") + " ";
+        const b = h("button", "primary", "Pobierz model (ollama pull)"); b.type = "button";
+        b.addEventListener("click", () => startJobWith(() => getClient().manageOllamaPull(st.model)));
+        line.appendChild(b);
+      }
+      box.appendChild(line);
+      const sug = h("p", "muted");
+      sug.innerHTML = "Polecane modele (wpisz w polu „Model”, zapisz, potem „Pobierz model”): "
+        + OLLAMA_SUGGESTIONS.map(([m, d]) => `<code>${esc(m)}</code> – ${esc(d)}`).join("; ") + ".";
+      box.appendChild(sug);
+    }).catch((e) => { box.innerHTML = `<p class="muted">nie udało się sprawdzić Ollamy: ${esc(e.message)}</p>`; });
+    return box;
   }
 
   // ---- jobs -------------------------------------------------------------------------
   async function startJob(engine, voices) {
+    return startJobWith(() => getClient().manageInstall(engine, voices));
+  }
+
+  async function startJobWith(begin) {
     try {
-      const { job } = await getClient().manageInstall(engine, voices);
+      const { job } = await begin();
       activeJob = job;
       render();
       pollJob();
@@ -358,7 +442,7 @@ export function createManager({ root, getClient, onChanged }) {
     if (!box) return;
     const j = activeJob;
     const st = { running: "trwa…", done: "zakończono", failed: "błąd" }[j.status] || j.status;
-    box.innerHTML = `<div class="job-head"><b>Instalacja: ${esc(j.target)}</b> ${badge(st, j.status === "done" ? "ok" : j.status === "failed" ? "err" : "")}${j.error ? ` <span class="err">${esc(j.error)}</span>` : ""}</div><pre>${esc(j.log.join("\n"))}</pre>`;
+    box.innerHTML = `<div class="job-head"><b>${j.kind === "ollama-pull" ? "Pobieranie modelu" : "Instalacja"}: ${esc(j.target)}</b> ${badge(st, j.status === "done" ? "ok" : j.status === "failed" ? "err" : "")}${j.error ? ` <span class="err">${esc(j.error)}</span>` : ""}</div><pre>${esc(j.log.join("\n"))}</pre>`;
     box.querySelector("pre").scrollTop = 1e9;
   }
 

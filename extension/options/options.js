@@ -228,6 +228,33 @@ async function testVoice() {
   }
 }
 
+async function testTranslator() {
+  const client = lastClient || new ServerClient($("serverUrl").value.trim() || "http://127.0.0.1:8765", $("serverToken").value);
+  const translator = $("translator").value;
+  const out = $("translateTestResult");
+  out.classList.add("hidden");
+  if (translator === "youtube") {
+    setStatus($("translateTestStatus"), "tłumaczenie YouTube działa w odtwarzaczu – nie da się go sprawdzić stąd", "");
+    return;
+  }
+  const text = $("translateTestText").value.trim();
+  if (!text) { setStatus($("translateTestStatus"), "wpisz zdanie", "err"); return; }
+  setStatus($("translateTestStatus"), "tłumaczę…");
+  $("btnTranslateTest").disabled = true;
+  try {
+    const t0 = performance.now();
+    const res = await client.translate({ sentences: [text], sourceLang: "auto", translator });
+    const ms = Math.round(performance.now() - t0);
+    out.textContent = res.translations[0] || "(pusta odpowiedź)";
+    out.classList.remove("hidden");
+    setStatus($("translateTestStatus"), `${res.translator}: ${ms} ms${ms > 8000 ? " – wolno; lektor pierwsze zdania dostanie z opóźnieniem" : ""}`, ms > 8000 ? "" : "ok");
+  } catch (e) {
+    setStatus($("translateTestStatus"), `błąd: ${e.message}`, "err");
+  } finally {
+    $("btnTranslateTest").disabled = false;
+  }
+}
+
 async function save() {
   settings = await saveSettings({
     serverUrl: $("serverUrl").value.trim() || "http://127.0.0.1:8765",
@@ -273,6 +300,7 @@ async function init() {
   $("importFile").addEventListener("change", () => { const f = $("importFile").files?.[0]; if (f) importSettings(f); $("importFile").value = ""; });
   $("aboutVersion").textContent = `wersja ${chrome.runtime.getManifest().version}`;
   $("btnTest").addEventListener("click", testVoice);
+  $("btnTranslateTest").addEventListener("click", testTranslator);
   $("btnSave").addEventListener("click", save);
   // Preselect stored values even before connecting.
   if (settings.engine) $("engine").insertAdjacentHTML("beforeend", `<option value="${settings.engine}" selected>${settings.engine}</option>`);

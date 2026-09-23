@@ -101,6 +101,11 @@ GPU engines (Chatterbox, XTTS) are installed later - from the extension's option
 virtualenv under `server\envs\<engine>\` with the torch build it pins (Chatterbox needs
 `torch==2.6.0`, installed from the CUDA 12.6 index when an NVIDIA driver is present) and runs
 as a worker process, so its pins never touch the server's environment or the other engine.
+On Blackwell GPUs (GeForce RTX 50xx, compute capability 12.x) the installer overrides
+Chatterbox's `torch==2.6.0` pin with `torch 2.7.1+cu128`, the oldest build that ships kernels
+for those cards; `torch 2.6/cu126` fails there with *"CUDA error: no kernel image is available
+for execution on the device"*. If an engine was installed before that logic existed, its card
+on the options page shows the mismatch and a "Przeinstaluj" button that fixes it in place.
 `.\reinstall_server_env.cmd` wipes `server\.venv` and reinstalls it if it ever gets into a
 broken state.
 

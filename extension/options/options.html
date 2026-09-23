@@ -75,6 +75,18 @@
       <label for="translator">Tłumacz napisów</label>
       <select id="translator"><option value="youtube">YouTube (automatyczne tłumaczenie)</option></select>
     </div>
+    <div class="row">
+      <label for="translateTestText">Zdanie do sprawdzenia</label>
+      <textarea id="translateTestText" rows="2">so what we're going to do today is take a look at the new board and see how it performs under load</textarea>
+    </div>
+    <div class="row">
+      <label></label>
+      <div>
+        <button id="btnTranslateTest" type="button">Sprawdź tłumacza</button>
+        <span id="translateTestStatus" class="status"></span>
+      </div>
+    </div>
+    <div id="translateTestResult" class="info hidden"></div>
     <p class="muted">Tłumacze LLM odtwarzają interpunkcję i granice zdań – dopiero to daje lektorowi naturalną intonację. Włączasz je i wpisujesz klucze w sekcji „Silniki i głosy” powyżej.</p>
   </section>
 

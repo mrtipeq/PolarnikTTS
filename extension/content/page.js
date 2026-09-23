@@ -59,17 +59,37 @@
     },
 
     // Load the captions module and list the available tracks plus the one currently shown.
+    // Two sources are merged: the captions module's tracklist (empty until the module has
+    // finished loading, and on some videos it omits the auto-generated track until the CC
+    // button was used) and the player response, which lists every track - including
+    // "asr" ones - as soon as the video is loaded.
     captionTracks() {
       const p = player();
       if (!p) return { ok: false, error: "no player" };
       try {
         if (typeof p.loadModule === "function") p.loadModule("captions");
-        const tracks = (p.getOption("captions", "tracklist") || []).map((t) => ({
-          languageCode: t.languageCode, kind: t.kind || "", name: t.displayName || t.languageName || "",
-        }));
+        const tracks = [];
+        const seen = new Set();
+        const add = (languageCode, kind, name) => {
+          if (!languageCode) return;
+          const key = `${languageCode}|${kind || ""}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          tracks.push({ languageCode, kind: kind || "", name: name || "" });
+        };
+        for (const t of p.getOption("captions", "tracklist") || []) add(t.languageCode, t.kind, t.displayName || t.languageName);
+        let fromResponse = [];
+        try {
+          const pr = typeof p.getPlayerResponse === "function" ? p.getPlayerResponse() : null;
+          fromResponse = pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+        } catch { /* ignore */ }
+        for (const t of fromResponse) {
+          const name = t.name?.simpleText || (t.name?.runs || []).map((r) => r.text).join("") || "";
+          add(t.languageCode, t.kind || (String(t.vssId || "").startsWith("a.") ? "asr" : ""), name);
+        }
         const current = p.getOption("captions", "track") || {};
         return {
-          ok: true, tracks,
+          ok: true, tracks, moduleTracks: (p.getOption("captions", "tracklist") || []).length,
           current: {
             languageCode: current.languageCode || "", kind: current.kind || "",
             translationLanguage: current.translationLanguage?.languageCode || "",

@@ -128,3 +128,33 @@ def pick_device(requested: str) -> str:
         return "cuda" if torch.cuda.is_available() else "cpu"
     except Exception:  # noqa: BLE001
         return "cpu"
+
+
+def cuda_kernel_problem() -> str:
+    """Return a reason string when the installed torch build has no kernels for GPU 0.
+
+    A CUDA wheel is compiled for a fixed list of architectures (torch.cuda.get_arch_list()).
+    Running on a newer GPU - e.g. torch 2.6/cu126 on an RTX 50xx (sm_120, Blackwell) - fails at
+    the first kernel launch with "no kernel image is available for execution on the device",
+    so detect the mismatch up front and tell the user to reinstall the engine (the installer
+    picks a matching build). Empty string = fine (or not applicable).
+    """
+    try:
+        import torch
+
+        if not torch.cuda.is_available():
+            return ""
+        major, minor = torch.cuda.get_device_capability(0)
+        sm = f"sm_{major}{minor}"
+        archs = torch.cuda.get_arch_list()
+        if not archs or sm in archs:
+            return ""
+        # A PTX target of the same major version can be JIT-compiled for the device.
+        if any(a == f"compute_{major}{minor}" or a.startswith(f"compute_{major}") for a in archs):
+            return ""
+        name = torch.cuda.get_device_name(0)
+        return (f"PyTorch {torch.__version__} has no CUDA kernels for {name} ({sm}; build supports "
+                f"{', '.join(a for a in archs if a.startswith('sm_'))}) - reinstall the engine from the "
+                f"options page to get a matching PyTorch build")
+    except Exception:  # noqa: BLE001
+        return ""

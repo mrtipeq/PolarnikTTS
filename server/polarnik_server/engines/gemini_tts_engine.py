@@ -42,7 +42,7 @@ class GeminiTtsEngine(Engine):
         return str(self.cfg.get("default_voice") or "Kore")
 
     async def synthesize(self, text: str, voice: str, speed: float = 1.0) -> AudioResult:
-        model = str(self.cfg.get("model_id") or "gemini-2.5-flash-preview-tts")
+        model = str(self.cfg.get("model_id") or "gemini-3.1-flash-tts-preview")
         style = str(self.cfg.get("style") or DEFAULT_STYLE)   # speed is applied client-side (native_speed=False)
         body = {
             "contents": [{"parts": [{"text": f"{style}{text}"}]}],

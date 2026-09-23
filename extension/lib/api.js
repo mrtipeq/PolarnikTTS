@@ -34,6 +34,9 @@ export class ServerClient {
   manageCatalog() { return this.getJson("/manage/catalog"); }
   manageInstall(engine, voices) { return this.postJson("/manage/install", { engine, voices: voices || null }); }
   manageJob(id, tail = 40) { return this.getJson(`/manage/jobs/${id}?tail=${tail}`); }
+  manageOllama() { return this.getJson("/manage/ollama"); }
+  manageModels(section, id) { return this.getJson(`/manage/models?section=${section}&id=${encodeURIComponent(id)}`); }
+  manageOllamaPull(model) { return this.postJson("/manage/ollama/pull", { model }); }
   manageConfig(section, id, values) { return this.postJson("/manage/config", { section, id, values }); }
   manageReload() { return this.postJson("/manage/reload", {}); }
   manageShutdown() { return this.postJson("/manage/shutdown", {}); }

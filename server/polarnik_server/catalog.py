@@ -40,7 +40,9 @@ ENGINES: dict[str, dict[str, Any]] = {
     "chatterbox": {
         "name": "Chatterbox Multilingual (GPU, cloning)",
         "extra": None,
-        # chatterbox-tts pins torch==2.6.0, numpy<2, transformers==5.x - it gets its own venv
+        # chatterbox-tts pins torch==2.6.0, numpy<2, transformers==5.x - it gets its own venv.
+        # On Blackwell GPUs (RTX 50xx) the installer overrides the pin with torch 2.7.1+cu128,
+        # the oldest build that has sm_120 kernels (see installer.resolve_torch_spec).
         "isolated": True,
         "packages": ["chatterbox-tts"],
         "torch": {"version": "2.6.0", "cuda": "cu126"},
@@ -93,7 +95,7 @@ ENGINES: dict[str, dict[str, Any]] = {
         "key_from_translator": "gemini",
         "fields": [
             {"key": "api_key", "type": "secret", "label": "API key (empty = use the Gemini translator key)"},
-            {"key": "model_id", "type": "choice", "choices": ["gemini-2.5-flash-preview-tts", "gemini-3.1-flash-tts-preview", "gemini-2.5-pro-preview-tts"]},
+            {"key": "model_id", "type": "choice", "choices": ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]},
         ],
         "download_mb": 0,
     },
@@ -123,6 +125,15 @@ ISOLATED_PROBES = {
     "xtts": ["TTS", "torch"],
 }
 
+# Model ids that providers have retired, with their replacement. Applied to config.yaml on
+# start-up (config.migrate_models) so an old install keeps working after a provider change.
+RETIRED_MODELS: dict[str, str] = {
+    "gemini-2.5-flash": "gemini-3.6-flash",           # "no longer available to new users" (Google, 2026)
+    "gemini-2.0-flash": "gemini-3.6-flash",           # shut down
+    "gemini-2.0-flash-lite": "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-preview-tts": "gemini-3.1-flash-tts-preview",
+}
+
 TRANSLATORS: dict[str, dict[str, Any]] = {
     "openai": {"type": "openai_compat", "name": "OpenAI",
                "fields": [{"key": "api_key", "type": "secret"}, {"key": "model", "type": "text"},
@@ -131,7 +142,7 @@ TRANSLATORS: dict[str, dict[str, Any]] = {
     "gemini": {"type": "openai_compat", "name": "Google Gemini",
                "fields": [{"key": "api_key", "type": "secret"}, {"key": "model", "type": "text"},
                           {"key": "base_url", "type": "text"}],
-               "defaults": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-2.5-flash"}},
+               "defaults": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "model": "gemini-3.6-flash"}},
     "ollama": {"type": "openai_compat", "name": "Ollama (local LLM, e.g. Bielik)",
                "fields": [{"key": "model", "type": "text"}, {"key": "base_url", "type": "text"}],
                "defaults": {"base_url": "http://127.0.0.1:11434/v1", "api_key": "ollama",
