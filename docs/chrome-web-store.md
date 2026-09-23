@@ -104,7 +104,14 @@ Ready to upload, in `docs/store/` (1280x800 PNG, Polish captions, in listing ord
 | `03_engines_cloud.png` | OpenAI / Gemini / ElevenLabs voices and the LLM translators with shared API keys |
 | `04_server_voice.png` | Engine server section (start/stop from the extension) and voice selection |
 | `05_playback_transfer.png` | Playback settings, export/import and the "O programie" section |
-| `promo_440x280.png` | Small promo tile |
+| `PolarnikTTL_witajka_resize.png` | Small promo tile (440x280) - use this one, hand-made |
+| `PolarnikTTS_baner_resize.png` | Marquee promo tile (1400x560), hand-made |
+| `promo_440x280.png` | Generated fallback promo tile |
+
+`Voice_over.png`, `CloudAI.png`, `LocalSpeches.png`, `Playback_controls.png` and
+`StartAndStop.png` are hand-made English mock-ups (1586x992). They are not uploaded to the
+Polish-only listing: they do not match the real UI exactly and the store needs 1280x800 or
+640x400. Kept for a possible English listing after resizing.
 
 The raw UI captures live in `docs/screenshots/` (also embedded in `README.md`); `08`-`10` show
 the English UI and the language pickers - use them for the English-language listing. After a UI
