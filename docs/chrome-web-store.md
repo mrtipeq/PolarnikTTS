@@ -12,8 +12,14 @@
    - `dist/PolarnikTTS-<version>-store.zip` - for every later update (no key inside).
    - The store rejects a manifest that still contains the `key` field; the script strips it.
 3. Store listing: name, summary (132 chars), description, category (Accessibility or
-   Productivity), language (Polish), at least one 1280x800 screenshot, a 128x128 icon
-   (already in `extension/icons/icon128.png`), optionally a 440x280 promo tile.
+   Productivity), at least one 1280x800 screenshot, a 128x128 icon (already in
+   `extension/icons/icon128.png`), optionally a 440x280 promo tile. **The listing is
+   published in Polish only** (one locale: "polski") - PolarnikTTS is a Polish project and
+   the screenshots are Polish; the multilingual UI is a feature the description mentions,
+   and the extension itself switches to the user's language after installation. The
+   manifest carries a short description for every UI language (`extension/_locales/`, each
+   at most 132 characters or the upload is rejected), so the store card shows the right
+   one-liner even to non-Polish users.
 4. Privacy: a privacy policy URL (host `docs/privacy-policy.md` on tipson.pl, e.g.
    `https://tipson.pl/polarnik/privacy`) and the "single purpose" statement plus a
    justification for each permission (below). Declare that the extension does not sell or
@@ -23,8 +29,9 @@
 
 ## Single purpose
 
-Polish voice-over for YouTube subtitles: the extension reads the current video's captions,
-translates them into Polish and plays synthesized speech in sync with the video.
+Voice-over for YouTube subtitles: the extension reads the current video's captions,
+translates them into the user's language (Polish by default) and plays synthesized speech
+in sync with the video.
 
 ## Permission justifications (paste into the developer console)
 
@@ -56,14 +63,16 @@ None. All extension code is inside the package; nothing is loaded from the netwo
 
 ## Store listing text (Polish)
 
-**Nazwa:** PolarnikTTS – polski lektor do YouTube
+**Nazwa:** PolarnikTTS – lektor do YouTube
 
 **Krótki opis (do 132 znaków):**
-Polski lektor do YouTube: tłumaczy napisy i czyta je wybranym głosem – lokalnie (GPU) lub w chmurze, z klonowaniem głosu.
+Lektor do YouTube: tłumaczy napisy i czyta je wybranym głosem – lokalnie (GPU) lub w chmurze, z klonowaniem głosu. 47 języków.
 
 **Opis:**
 PolarnikTTS zamienia napisy każdego filmu na YouTube w polskiego lektora – tak jak w telewizji:
 oryginalna ścieżka jest ściszona, a na niej słychać polski głos, zsynchronizowany z napisami.
+Polski jest tu na pierwszym miejscu, ale lektor mówi w 47 językach, a interfejs w 23 –
+rozszerzenie samo przełącza się na język systemu, więc można je polecić znajomym za granicą.
 
 Co wyróżnia PolarnikTTS:
 - pracuje z wyprzedzeniem: składa napisy w zdania, tłumaczy je z kontekstem i syntezuje mowę
@@ -75,7 +84,10 @@ Co wyróżnia PolarnikTTS:
   Bielik), który przywraca interpunkcję i naturalny szyk zdania;
 - panel w odtwarzaczu w stylu YouTube: włącznik, silnik, głos, tempo, głośność lektora,
   ściszenie oryginału, przesunięcie, tryb „zwolnij film, gdy lektor nie nadąża”;
-- wszystko zapisuje się automatycznie, a ustawienia można wyeksportować na inny komputer.
+- wszystko zapisuje się automatycznie, a ustawienia można wyeksportować na inny komputer;
+- wielojęzyczność: interfejs w 23 językach (polski, angielski, niemiecki, hiszpański,
+  francuski, chiński, japoński, arabski, hindi…), lektor w 47 – głosy dobierają się do
+  wybranego języka, a napisy tłumaczą się właśnie na niego.
 
 Wymaga zainstalowania darmowego serwera PolarnikTTS (Windows/Linux/macOS, Python) – instrukcja
 i kod źródłowy: https://github.com/mrtipeq/PolarnikTTS. Autor: MrTip (Tipson) – https://tipson.pl.

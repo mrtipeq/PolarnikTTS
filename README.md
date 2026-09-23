@@ -28,6 +28,10 @@ See `docs/architecture.md` for the design and the roadmap below for what is stil
 
 ## Screenshots
 
+PolarnikTTS is a Polish project, so the store listing and most captures below show the
+Polish UI; the three at the end show the same pages in English. Every language looks the
+same - only the words change (and the layout flips for Arabic, Urdu, Persian and Hebrew).
+
 <p align="center">
   <img src="docs/screenshots/01_player_panel.png" alt="PolarnikTTS panel inside the YouTube player" width="360">
   &nbsp;&nbsp;
