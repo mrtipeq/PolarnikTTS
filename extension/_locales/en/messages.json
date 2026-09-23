@@ -3,6 +3,6 @@
     "message": "PolarnikTTS"
   },
   "extDescription": {
-    "message": "Voice-over for YouTube subtitles: translates the subtitles into your language and reads them with the TTS engine of your choice (local or cloud)."
+    "message": "Voice-over for YouTube subtitles: translates them into your language and reads them with the TTS engine you choose (local or cloud)."
   }
 }
