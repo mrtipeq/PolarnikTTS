@@ -1,10 +1,12 @@
 # PolarnikTTS – Privacy Policy / Polityka prywatności
 
-Last updated: 2026-09-22 · Author: MrTip (Tipson), https://tipson.pl
+Last updated: 2026-09-23 · Author: MrTip (Tipson), https://tipson.pl
+
+Published at https://tipson.pl/polarnik/privacy (the standalone page is `docs/privacy/index.html` - upload that folder as `polarnik/privacy/`).
 
 ## English
 
-PolarnikTTS is a Chrome extension that reads YouTube subtitles aloud in Polish. It works together
+PolarnikTTS is a Chrome extension that reads YouTube subtitles aloud as a voice-over - in Polish or another language you choose. It works together
 with the PolarnikTTS engine server, a program you install and run on your own computer (or on
 another computer in your local network that you configure yourself).
 
@@ -12,7 +14,7 @@ another computer in your local network that you configure yourself).
 
 - The subtitle text and timing of the YouTube video you are watching, and the video id. This
   text is sent to your engine server for translation and speech synthesis.
-- Your settings (server address, chosen engine and voice, volume, speed) stored locally in the
+- Your settings (server address, chosen engine and voice, volume, speed, language) stored locally in the
   browser (`chrome.storage.local`).
 
 **What the extension does not do**
@@ -35,7 +37,7 @@ https://tipson.pl · https://github.com/mrtipeq/PolarnikTTS/issues
 
 ## Polski
 
-PolarnikTTS to rozszerzenie Chrome, które czyta napisy YouTube po polsku. Współpracuje z
+PolarnikTTS to rozszerzenie Chrome, które czyta napisy YouTube głosem lektora – po polsku lub w innym wybranym języku. Współpracuje z
 serwerem PolarnikTTS – programem, który instalujesz i uruchamiasz na własnym komputerze (albo
 na innym komputerze w swojej sieci lokalnej, który sam wskażesz).
 
@@ -43,7 +45,7 @@ na innym komputerze w swojej sieci lokalnej, który sam wskażesz).
 
 - Tekst i czas napisów oglądanego filmu oraz identyfikator filmu. Tekst trafia do Twojego
   serwera silników w celu tłumaczenia i syntezy mowy.
-- Twoje ustawienia (adres serwera, silnik, głos, głośność, tempo), zapisane lokalnie w
+- Twoje ustawienia (adres serwera, silnik, głos, głośność, tempo, język), zapisane lokalnie w
   przeglądarce.
 
 **Czego rozszerzenie nie robi**

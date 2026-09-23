@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PolarnikTTS – Polityka prywatności / Privacy Policy</title>
+  <meta name="description" content="Polityka prywatności rozszerzenia PolarnikTTS – lektora do napisów na YouTube. Privacy policy of the PolarnikTTS Chrome extension.">
+  <meta name="robots" content="index,follow">
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #1b1d22; --muted: #5d6470; --accent: #d62828; --line: #e3e6ea; --card: #f6f7f9;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #14161a; --fg: #e8eaee; --muted: #9aa3b0; --line: #2b2f36; --card: #1c1f25; }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      font-size: 17px; line-height: 1.6;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 40px 20px 64px; }
+    header { display: flex; align-items: center; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+    header svg { width: 56px; height: 56px; flex: none; }
+    header h1 { font-size: 26px; margin: 0; line-height: 1.2; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+    nav { font-size: 15px; color: var(--muted); margin: 12px 0 28px; }
+    nav a { color: inherit; }
+    h2 { font-size: 22px; margin: 44px 0 12px; padding-top: 8px; border-top: 3px solid var(--accent); display: inline-block; }
+    h3 { font-size: 17px; margin: 24px 0 6px; }
+    p, li { margin: 0 0 10px; }
+    ul { padding-left: 22px; }
+    code { font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; font-size: 0.92em; background: var(--card); padding: 1px 6px; border-radius: 4px; }
+    a { color: var(--accent); }
+    .note { background: var(--card); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+    footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 128 128" aria-hidden="true"><rect x="8" y="8" width="112" height="112" rx="22" fill="#1e3a8a"/><rect x="8" y="76" width="112" height="44" rx="22" fill="#d62828"/><rect x="8" y="76" width="112" height="22" fill="#d62828"/><rect x="8" y="88" width="112" height="16" fill="#ffffff"/><text x="64" y="70" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="60" fill="#ffffff">P</text></svg>
+    <div>
+      <h1>PolarnikTTS – Polityka prywatności</h1>
+      <p>Privacy Policy · ostatnia aktualizacja / last updated: 2026-09-23 · autor / author: MrTip (Tipson)</p>
+    </div>
+  </header>
+  <nav><a href="#pl">Polski</a> · <a href="#en">English</a> · <a href="https://tipson.pl">tipson.pl</a> · <a href="https://github.com/mrtipeq/PolarnikTTS">GitHub</a></nav>
+
+  <section id="pl" lang="pl">
+    <h2>Polski</h2>
+    <p>PolarnikTTS to rozszerzenie Chrome, które czyta napisy YouTube głosem lektora – po polsku lub w innym wybranym języku. Współpracuje z serwerem PolarnikTTS: programem, który instalujesz i uruchamiasz na własnym komputerze (albo na innym komputerze w swojej sieci lokalnej, który sam wskażesz).</p>
+
+    <h3>Co rozszerzenie przetwarza</h3>
+    <ul>
+      <li>Tekst i czas napisów oglądanego filmu oraz identyfikator filmu. Tekst trafia do Twojego serwera silników w celu tłumaczenia i syntezy mowy.</li>
+      <li>Twoje ustawienia (adres serwera, silnik, głos, głośność, tempo, język), zapisane lokalnie w przeglądarce (<code>chrome.storage.local</code>).</li>
+    </ul>
+
+    <h3>Czego rozszerzenie nie robi</h3>
+    <ul>
+      <li>Nie zbiera danych osobowych, historii przeglądania, statystyk ani telemetrii.</li>
+      <li>Nie wysyła niczego do autora ani na żaden serwer poza skonfigurowanym serwerem silników.</li>
+      <li>Nie pobiera żadnego kodu z sieci.</li>
+    </ul>
+
+    <h3>Usługi zewnętrzne</h3>
+    <p>Serwer silników może korzystać z usług zewnętrznych, ale wyłącznie tych, które sam włączysz, i z kluczami API, które sam wpiszesz: Microsoft Edge TTS, OpenAI, Google Gemini, ElevenLabs, DeepL, Anthropic albo lokalny model Ollama. Wtedy zdania napisów trafiają do tego dostawcy na zasadach jego polityki prywatności. Przesłane próbki głosu pozostają na Twoim komputerze w katalogu <code>voices</code> serwera.</p>
+
+    <div class="note">Uprawnienia rozszerzenia: <code>storage</code> (ustawienia), <code>webRequest</code> (tylko obserwacja żądań napisów YouTube, bez modyfikacji), <code>nativeMessaging</code> (uruchomienie Twojego lokalnego serwera), dostęp do <code>youtube.com</code> oraz <code>127.0.0.1</code>/<code>localhost</code>; adres innego komputera w sieci lokalnej – tylko za Twoją zgodą, gdy go wpiszesz.</div>
+
+    <h3>Kontakt</h3>
+    <p><a href="https://tipson.pl">tipson.pl</a> · <a href="https://github.com/mrtipeq/PolarnikTTS/issues">github.com/mrtipeq/PolarnikTTS/issues</a></p>
+  </section>
+
+  <section id="en" lang="en">
+    <h2>English</h2>
+    <p>PolarnikTTS is a Chrome extension that reads YouTube subtitles aloud as a voice-over – in Polish or in another language you choose. It works together with the PolarnikTTS engine server, a program you install and run on your own computer (or on another computer in your local network that you configure yourself).</p>
+
+    <h3>What the extension processes</h3>
+    <ul>
+      <li>The subtitle text and timing of the YouTube video you are watching, and the video id. This text is sent to your engine server for translation and speech synthesis.</li>
+      <li>Your settings (server address, engine, voice, volume, speed, language) stored locally in the browser (<code>chrome.storage.local</code>).</li>
+    </ul>
+
+    <h3>What the extension does not do</h3>
+    <ul>
+      <li>It collects no personal data, no browsing history, no analytics and no telemetry.</li>
+      <li>It sends nothing to the author or to any server other than the engine server you configured.</li>
+      <li>It loads no remote code.</li>
+    </ul>
+
+    <h3>Third-party services</h3>
+    <p>The engine server can use third-party providers, but only those you enable yourself and only with API keys you enter yourself: Microsoft Edge TTS, OpenAI, Google Gemini, ElevenLabs, DeepL, Anthropic, or a local Ollama model. When enabled, subtitle sentences are sent to that provider under its own privacy policy. Uploaded voice samples stay on your computer in the server's <code>voices</code> folder.</p>
+
+    <div class="note">Extension permissions: <code>storage</code> (settings), <code>webRequest</code> (observing YouTube's subtitle requests only, nothing is modified), <code>nativeMessaging</code> (starting your local server), access to <code>youtube.com</code> and <code>127.0.0.1</code>/<code>localhost</code>; another computer in your LAN only with your consent, when you enter its address.</div>
+
+    <h3>Contact</h3>
+    <p><a href="https://tipson.pl">tipson.pl</a> · <a href="https://github.com/mrtipeq/PolarnikTTS/issues">github.com/mrtipeq/PolarnikTTS/issues</a></p>
+  </section>
+
+  <footer>PolarnikTTS · MIT licence · © 2026 MrTip (Darek), Tipson</footer>
+</main>
+</body>
+</html>

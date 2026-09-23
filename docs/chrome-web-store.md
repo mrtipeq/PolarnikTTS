@@ -20,8 +20,8 @@
    manifest carries a short description for every UI language (`extension/_locales/`, each
    at most 132 characters or the upload is rejected), so the store card shows the right
    one-liner even to non-Polish users.
-4. Privacy: a privacy policy URL (host `docs/privacy-policy.md` on tipson.pl, e.g.
-   `https://tipson.pl/polarnik/privacy`) and the "single purpose" statement plus a
+4. Privacy: a privacy policy URL - upload `docs/privacy/index.html` to tipson.pl as
+   `https://tipson.pl/polarnik/privacy/` (self-contained page, PL + EN) and the "single purpose" statement plus a
    justification for each permission (below). Declare that the extension does not sell or
    transfer user data.
 5. Review takes from hours to a few days. Extensions using `nativeMessaging` and
