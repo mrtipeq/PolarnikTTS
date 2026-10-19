@@ -180,6 +180,34 @@ immediately. `.\autostart.cmd -Uninstall` removes it, `.\stop_server.cmd` stops 
 server. Logs are written to `server\logs\server.log`. A second instance on the same port exits
 quietly, so autostart and a manual `run_server.cmd` do not fight each other.
 
+#### Startup behaviour
+
+The server opens its port within a second or two and checks the engines in the background:
+the GPU engines (Chatterbox, XTTS) start a worker that imports PyTorch, which can take half a
+minute on a cold start. Until then `/health` lists them in `engines_loading`, the options page
+shows them as *loading…*, and a `/tts` request for such an engine simply waits for it. When you
+press Start, the launcher waits for `/health` (up to 60 s); if something holds the port but does
+not answer (a server hung after the PC woke from sleep, a leftover worker), it is killed and a
+fresh server is started. If the server crashes on start, the error shown in the extension
+contains the last lines of `server\logs\server-stderr.log` / `server.log`.
+
+#### Updating an installed copy
+
+In a folder that is not a git clone (e.g. `C:\PolarnikTTS` set up from a zip), run
+`update.cmd`: it downloads the latest version from GitHub, stops the server, copies the new
+files over the installation (keeping `config.yaml`, `voices`, `models`, `envs` and `.venv`),
+refreshes the Python packages and re-registers the launcher. Installations older than 0.4.1 do
+not have the script yet - fetch it once:
+
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/mrtipeq/PolarnikTTS/main/update.ps1 -OutFile C:\PolarnikTTS\update.ps1 -UseBasicParsing
+powershell -ExecutionPolicy Bypass -File C:\PolarnikTTS\update.ps1
+```
+
+In a git clone use `git pull` instead. Microsoft Edge voices use an unofficial service; when it
+changes, synthesis fails with *HTTP 403* until a newer `edge-tts` is installed - the Edge card on
+the options page has an **Aktualizuj edge-tts** button for that.
+
 ### Linux / macOS
 
 ```bash

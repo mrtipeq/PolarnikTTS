@@ -10,6 +10,7 @@
   "common.synthesizing": "합성 중…",
   "common.synthesis": "합성",
   "common.fromCache": "캐시에서",
+  "common.engineLoading": "불러오는 중…",
 
   "panel.enabled": "더빙 켜기",
   "panel.language": "더빙 언어",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "모델 다운로드",
   "mg.install": "설치",
   "mg.reinstall": "재설치 (이 GPU용 PyTorch 수정)",
+  "mg.updatePackage": "edge-tts 업데이트",
+  "mg.updatePackageHint": "Microsoft가 서비스를 변경하면 Edge 음성이 HTTP 403 오류로 실패합니다. 새 라이브러리 버전으로 해결됩니다. 서버는 자동으로 다시 시작됩니다.",
   "mg.enable": "활성화",
   "mg.disable": "비활성화",
   "mg.enabledDone": "활성화됨",

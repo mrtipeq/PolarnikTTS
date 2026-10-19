@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -39,6 +40,7 @@ class EngineInfo:
     voices: list[Voice] = field(default_factory=list)
     licence: str = ""
     langs: list[str] = field(default_factory=list)   # target languages the engine can speak; [] = any
+    loading: bool = False        # readiness check still running (server warming up)
 
 
 class Engine:
@@ -62,6 +64,7 @@ class Engine:
         self._lock = asyncio.Lock()
         self._ready: bool | None = None
         self._reason = ""
+        self._check_lock = threading.Lock()   # one readiness check at a time (warm-up thread vs. requests)
 
     # -- lifecycle -------------------------------------------------------
 
@@ -70,12 +73,23 @@ class Engine:
         return True, ""
 
     def ensure_ready(self) -> tuple[bool, str]:
+        """Run check() once and cache the result. Blocking: isolated engines start their worker
+        here (torch import), so async code must call it through asyncio.to_thread()."""
         if self._ready is None:
-            try:
-                self._ready, self._reason = self.check()
-            except Exception as exc:  # noqa: BLE001
-                self._ready, self._reason = False, f"{type(exc).__name__}: {exc}"
-        return self._ready, self._reason
+            with self._check_lock:
+                if self._ready is None:
+                    try:
+                        ready, reason = self.check()
+                    except Exception as exc:  # noqa: BLE001
+                        ready, reason = False, f"{type(exc).__name__}: {exc}"
+                    self._reason = reason
+                    self._ready = ready
+        return bool(self._ready), self._reason
+
+    @property
+    def checked(self) -> bool:
+        """True once the readiness check has finished (never blocks)."""
+        return self._ready is not None
 
     def load(self) -> None:
         """Load heavy resources (models). Called lazily before the first synthesis."""
@@ -108,7 +122,12 @@ class Engine:
     def supports_lang(self, lang: str) -> bool:
         return not self.langs or lang in self.langs
 
-    def info(self) -> EngineInfo:
+    def info(self, block: bool = True) -> EngineInfo:
+        if not block and not self.checked:
+            return EngineInfo(id=self.id, name=self.name, kind=self.kind, ready=False, reason="loading",
+                              streaming=self.streaming, cloning=self.cloning, native_speed=self.native_speed,
+                              default_voice=self.default_voice, voices=[], licence=self.licence,
+                              langs=list(self.langs), loading=True)
         ready, reason = self.ensure_ready()
         voices: list[Voice] = []
         if ready:

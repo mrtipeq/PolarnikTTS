@@ -10,6 +10,7 @@
   "common.synthesizing": "در حال تولید صدا…",
   "common.synthesis": "تولید صدا",
   "common.fromCache": "از حافظهٔ نهان",
+  "common.engineLoading": "در حال بارگذاری…",
 
   "panel.enabled": "گویندهٔ روشن",
   "panel.language": "زبان گوینده",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "دانلود مدل",
   "mg.install": "نصب",
   "mg.reinstall": "نصب مجدد (اصلاح PyTorch برای این GPU)",
+  "mg.updatePackage": "به‌روزرسانی edge-tts",
+  "mg.updatePackageHint": "وقتی Microsoft سرویس را تغییر دهد، صداهای Edge با خطای HTTP 403 شکست می‌خورند؛ نسخهٔ جدیدتر کتابخانه این را رفع می‌کند. سرور خودش دوباره راه‌اندازی می‌شود.",
   "mg.enable": "فعال‌کردن",
   "mg.disable": "غیرفعال‌کردن",
   "mg.enabledDone": "فعال شد",

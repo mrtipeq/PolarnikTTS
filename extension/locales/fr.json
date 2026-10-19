@@ -10,6 +10,7 @@
   "common.synthesizing": "synthèse…",
   "common.synthesis": "synthèse",
   "common.fromCache": "depuis le cache",
+  "common.engineLoading": "chargement…",
 
   "panel.enabled": "Voix off activée",
   "panel.language": "Langue de la voix off",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Télécharger le modèle",
   "mg.install": "Installer",
   "mg.reinstall": "Réinstaller (réparer PyTorch pour ce GPU)",
+  "mg.updatePackage": "Mettre à jour edge-tts",
+  "mg.updatePackageHint": "Quand Microsoft modifie le service, les voix Edge échouent avec HTTP 403 ; une version plus récente de la bibliothèque corrige cela. Le serveur redémarre seul.",
   "mg.enable": "Activer",
   "mg.disable": "Désactiver",
   "mg.enabledDone": "activé",

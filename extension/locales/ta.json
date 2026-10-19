@@ -10,6 +10,7 @@
   "common.synthesizing": "குரல் உருவாக்கப்படுகிறது…",
   "common.synthesis": "குரல் உருவாக்கம்",
   "common.fromCache": "கேச்சிலிருந்து",
+  "common.engineLoading": "ஏற்றுகிறது…",
 
   "panel.enabled": "குரல் விவரிப்பு இயக்கம்",
   "panel.language": "குரல் விவரிப்பு மொழி",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "மாதிரியைப் பதிவிறக்கு",
   "mg.install": "நிறுவு",
   "mg.reinstall": "மீண்டும் நிறுவு (இந்த GPU க்கு PyTorch ஐ சரிசெய்)",
+  "mg.updatePackage": "edge-tts ஐப் புதுப்பி",
+  "mg.updatePackageHint": "Microsoft சேவையை மாற்றினால் Edge குரல்கள் HTTP 403 பிழை தரும் – நூலகத்தின் புதிய பதிப்பு இதைச் சரிசெய்யும். சேவையகம் தானாக மீண்டும் தொடங்கும்.",
   "mg.enable": "இயக்கு",
   "mg.disable": "முடக்கு",
   "mg.enabledDone": "இயக்கப்பட்டது",

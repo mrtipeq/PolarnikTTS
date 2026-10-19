@@ -10,6 +10,7 @@
   "common.synthesizing": "合成緊…",
   "common.synthesis": "合成",
   "common.fromCache": "來自快取",
+  "common.engineLoading": "載入緊…",
 
   "panel.enabled": "開啟配音",
   "panel.language": "配音語言",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "下載模型",
   "mg.install": "安裝",
   "mg.reinstall": "重新安裝（修復呢張顯示卡嘅 PyTorch）",
+  "mg.updatePackage": "更新 edge-tts",
+  "mg.updatePackageHint": "微軟改咗服務之後，Edge 語音會出 HTTP 403 錯誤，更新程式庫就得。伺服器會自動重新啟動。",
   "mg.enable": "啟用",
   "mg.disable": "停用",
   "mg.enabledDone": "已啟用",

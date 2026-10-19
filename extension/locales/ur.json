@@ -10,6 +10,7 @@
   "common.synthesizing": "آواز بن رہی ہے…",
   "common.synthesis": "آواز سازی",
   "common.fromCache": "کیش سے",
+  "common.engineLoading": "لوڈ ہو رہا ہے…",
 
   "panel.enabled": "وائس اوور آن",
   "panel.language": "وائس اوور کی زبان",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "ماڈل ڈاؤن لوڈ کریں",
   "mg.install": "انسٹال کریں",
   "mg.reinstall": "دوبارہ انسٹال کریں (اس GPU کے لیے PyTorch ٹھیک کریں)",
+  "mg.updatePackage": "edge-tts اپ ڈیٹ کریں",
+  "mg.updatePackageHint": "جب Microsoft سروس بدلتا ہے تو Edge آوازیں HTTP 403 کی خرابی دیتی ہیں – لائبریری کا نیا ورژن اسے ٹھیک کرتا ہے۔ سرور خود دوبارہ شروع ہو جائے گا۔",
   "mg.enable": "فعال کریں",
   "mg.disable": "غیر فعال کریں",
   "mg.enabledDone": "فعال ہو گیا",

@@ -10,6 +10,7 @@
   "common.synthesizing": "合成中…",
   "common.synthesis": "合成",
   "common.fromCache": "来自缓存",
+  "common.engineLoading": "加载中…",
 
   "panel.enabled": "开启配音",
   "panel.language": "配音语言",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "下载模型",
   "mg.install": "安装",
   "mg.reinstall": "重新安装（修复此显卡的 PyTorch）",
+  "mg.updatePackage": "更新 edge-tts",
+  "mg.updatePackageHint": "微软更改服务后，Edge 语音会返回 HTTP 403 错误，更新库即可解决。服务器会自动重启。",
   "mg.enable": "启用",
   "mg.disable": "禁用",
   "mg.enabledDone": "已启用",

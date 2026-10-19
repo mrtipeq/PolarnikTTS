@@ -123,8 +123,13 @@ _ISOLATED_CACHE: dict[str, tuple[float, bool]] = {}
 
 
 def install_engine(engine_id: str, server_dir: Path, models_dir: Path, log: LogFn,
-                   voices: list[str] | None = None, engine_cfg: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Install dependencies and models for an engine. Returns {"restart_required": bool}."""
+                   voices: list[str] | None = None, engine_cfg: dict[str, Any] | None = None,
+                   upgrade: bool = False) -> dict[str, Any]:
+    """Install dependencies and models for an engine. Returns {"restart_required": bool}.
+
+    upgrade=True re-runs pip with --upgrade for a server-venv engine even when it is already
+    installed (edge-tts must follow Microsoft's API changes) and restarts the server.
+    """
     meta = ENGINES.get(engine_id)
     if meta is None:
         raise ValueError(f"unknown engine {engine_id}")
@@ -133,8 +138,9 @@ def install_engine(engine_id: str, server_dir: Path, models_dir: Path, log: LogF
     if meta.get("isolated"):
         _install_isolated(engine_id, meta, server_dir, models_dir, log, engine_cfg or {})
     else:
-        if meta.get("extra") and not extra_installed(meta["extra"]):
-            cmd = [sys.executable, "-m", "pip", "install", "-e", f"{server_dir}[{meta['extra']}]"]
+        if meta.get("extra") and (upgrade or not extra_installed(meta["extra"])):
+            cmd = [sys.executable, "-m", "pip", "install", *(["--upgrade", "--upgrade-strategy", "only-if-needed"] if upgrade else []),
+                   "-e", f"{server_dir}[{meta['extra']}]"]
             if run_logged(cmd, server_dir, log) != 0:
                 raise RuntimeError("pip install failed")
             restart_required = True

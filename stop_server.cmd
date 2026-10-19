@@ -1,4 +1,4 @@
 @echo off
 rem Stops a PolarnikTTS server running in the background (started by autostart).
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'polarnik_server' } | ForEach-Object { Write-Host ('Stopping PID ' + $_.ProcessId); Stop-Process -Id $_.ProcessId -Force }"
+  "Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match '-m polarnik_server' } | ForEach-Object { Write-Host ('Stopping PID ' + $_.ProcessId); Stop-Process -Id $_.ProcessId -Force }"

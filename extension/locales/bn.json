@@ -10,6 +10,7 @@
   "common.synthesizing": "সংশ্লেষণ চলছে…",
   "common.synthesis": "সংশ্লেষণ",
   "common.fromCache": "ক্যাশ থেকে",
+  "common.engineLoading": "লোড হচ্ছে…",
 
   "panel.enabled": "ভয়েস-ওভার চালু",
   "panel.language": "ভয়েস-ওভারের ভাষা",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "মডেল ডাউনলোড",
   "mg.install": "ইনস্টল",
   "mg.reinstall": "পুনরায় ইনস্টল (এই GPU-র জন্য PyTorch ঠিক করুন)",
+  "mg.updatePackage": "edge-tts আপডেট করুন",
+  "mg.updatePackageHint": "Microsoft পরিষেবা বদলালে Edge কণ্ঠ HTTP 403 ত্রুটি দেয় – লাইব্রেরির নতুন সংস্করণ এটি ঠিক করে। সার্ভার নিজে থেকেই পুনরায় চালু হবে।",
   "mg.enable": "চালু করুন",
   "mg.disable": "বন্ধ করুন",
   "mg.enabledDone": "চালু হয়েছে",

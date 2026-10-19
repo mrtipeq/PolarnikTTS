@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from typing import Any
 
@@ -49,12 +52,49 @@ class State:
         self.translators, self.default_translator = build_translators(config.translators)
         self.cache = AudioCache(config.cache_dir)
         self.started = time.time()
+        self.warm_generation = 0
+
+    # -- warm-up -----------------------------------------------------------------------
+    def warm_up(self) -> None:
+        """Run every engine's readiness check in the background, in parallel.
+
+        The server binds its port first (so the launcher and the extension see it within a
+        second or two); heavy engines finish loading afterwards and /health reports them in
+        `engines_loading` until then. Called again after the engines are rebuilt (reload).
+        """
+        self.warm_generation += 1
+        gen = self.warm_generation
+        engines = dict(self.engines)
+
+        def check(eid: str, engine: Engine) -> None:
+            t0 = time.perf_counter()
+            ready, reason = engine.ensure_ready()
+            log.info("Engine %-12s %s in %.1fs%s", eid, "ready" if ready else "NOT ready",
+                     time.perf_counter() - t0, f" ({reason})" if reason else "")
+
+        def run() -> None:
+            t0 = time.perf_counter()
+            with ThreadPoolExecutor(max_workers=max(1, len(engines)), thread_name_prefix="warmup") as pool:
+                for eid, engine in engines.items():
+                    pool.submit(check, eid, engine)
+            if gen == self.warm_generation:
+                log.info("All engines checked in %.1fs", time.perf_counter() - t0)
+
+        threading.Thread(target=run, name="warmup", daemon=True).start()
+
+    def loading(self) -> list[str]:
+        return [eid for eid, e in self.engines.items() if not e.checked]
+
+    def ready_engines(self) -> list[str]:
+        """Engines whose check finished successfully (never blocks)."""
+        return [eid for eid, e in self.engines.items() if e.checked and e.ensure_ready()[0]]
 
     def default_engine(self) -> str | None:
-        """Configured default engine when ready, else the first ready real engine, else the test tone."""
-        ready = [eid for eid, e in self.engines.items() if e.ensure_ready()[0]]
+        """Configured default engine when ready (or still loading), else the first ready real
+        engine, else the test tone. Never blocks on a readiness check."""
+        ready = self.ready_engines()
         preferred = str(self.config.server.get("default_engine") or "edge_tts")
-        if preferred in ready:
+        if preferred in ready or (preferred in self.engines and not self.engines[preferred].checked):
             return preferred
         real = [eid for eid in ready if eid != "test_tone"]
         return (real or ready or [None])[0]
@@ -94,6 +134,10 @@ def create_app(config: Config) -> FastAPI:
     app = FastAPI(title="PolarnikTTS engine server", version=__version__)
     app.state.polarnik = state
 
+    @app.on_event("startup")
+    async def start_warm_up() -> None:
+        state.warm_up()
+
     # Chrome extensions send Origin: chrome-extension://<id>; allow everything, the
     # optional bearer token is the actual access control.
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
@@ -112,8 +156,8 @@ def create_app(config: Config) -> FastAPI:
         """Human-readable status page (English; the extension UI is localized)."""
         rows = []
         for e in state.engines.values():
-            info = e.info()
-            mark = "✔" if info.ready else "✘"
+            info = e.info(block=False)
+            mark = "…" if info.loading else ("✔" if info.ready else "✘")
             note = f" – {info.reason}" if info.reason else ""
             rows.append(f"<li>{mark} <b>{info.id}</b> ({info.name}){note}</li>")
         translators_html = "".join(
@@ -148,7 +192,9 @@ interface here. Voice settings live in the extension's options page in Chrome.</
             "version": __version__,
             "uptime_s": round(time.time() - state.started, 1),
             "cuda": cuda_info(),
-            "engines_ready": [eid for eid, e in state.engines.items() if e.ensure_ready()[0]],
+            "engines_ready": state.ready_engines(),
+            "engines_loading": state.loading(),
+            "warming": bool(state.loading()),
             "default_engine": state.default_engine(),
             "translators_ready": [tid for tid, t in state.translators.items() if t.info().ready],
             "default_translator": state.default_translator,
@@ -156,8 +202,13 @@ interface here. Voice settings live in the extension's options page in Chrome.</
         }
 
     @app.get("/engines", dependencies=[Depends(require_token)])
-    async def engines() -> list[dict[str, Any]]:
-        return [asdict(e.info()) for e in state.engines.values()]
+    async def engines(wait: float = 0) -> list[dict[str, Any]]:
+        """Engines and voices. Engines still being checked come back with loading=true;
+        ?wait=N waits up to N seconds (max 120) for the warm-up to finish first."""
+        deadline = time.monotonic() + min(max(wait, 0.0), 120.0)
+        while state.loading() and time.monotonic() < deadline:
+            await asyncio.sleep(0.25)
+        return [asdict(e.info(block=False)) for e in state.engines.values()]
 
     @app.get("/languages")
     async def languages() -> dict[str, Any]:
@@ -178,7 +229,8 @@ interface here. Voice settings live in the extension's options page in Chrome.</
         if not engine_id or engine_id not in state.engines:
             raise HTTPException(status_code=404, detail=f"engine not configured: {engine_id}")
         engine = state.engines[engine_id]
-        ready, reason = engine.ensure_ready()
+        # waits for this engine's warm-up when it is still loading (worker start, torch import)
+        ready, reason = await asyncio.to_thread(engine.ensure_ready)
         if not ready:
             raise HTTPException(status_code=503, detail=f"engine {engine_id} not ready: {reason}")
         lang = normalize_lang(req.lang)

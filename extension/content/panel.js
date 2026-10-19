@@ -153,7 +153,7 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
       const items = [{ id: "", name: t("panel.serverDefault") }].concat(engines.map((e) => {
         const cannot = e.langs?.length && !e.langs.includes(lang);
         return { id: e.id, name: e.name, disabled: !e.ready || cannot,
-                 note: !e.ready ? e.reason : cannot ? t("panel.engineNoLang", { name: TARGET_LANGS[lang] || lang }) : "" };
+                 note: e.loading ? t("common.engineLoading") : !e.ready ? e.reason : cannot ? t("panel.engineNoLang", { name: TARGET_LANGS[lang] || lang }) : "" };
       }));
       return renderList(t("panel.engine"), items, s.engine, (id) => saveSettings({ engine: id, voice: "" }));
     }
@@ -182,6 +182,10 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
     try {
       const [e, t] = await Promise.all([client().engines(), client().translators()]);
       engines = e; translators = t.items; serverUp = true;
+      if (e.some((x) => x.loading)) {
+        // server just started: refresh once the heavy engines have finished loading
+        client().engines(90).then((full) => { engines = full; if (!root.hidden) render(); }).catch(() => {});
+      }
     } catch { engines = []; translators = []; serverUp = false; }
   }
 

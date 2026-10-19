@@ -10,6 +10,7 @@
   "common.synthesizing": "sentezleniyor…",
   "common.synthesis": "sentez",
   "common.fromCache": "önbellekten",
+  "common.engineLoading": "yükleniyor…",
 
   "panel.enabled": "Seslendirme açık",
   "panel.language": "Seslendirme dili",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Modeli indir",
   "mg.install": "Kur",
   "mg.reinstall": "Yeniden kur (bu GPU için PyTorch'u onar)",
+  "mg.updatePackage": "edge-tts'i güncelle",
+  "mg.updatePackageHint": "Microsoft hizmeti değiştirdiğinde Edge sesleri HTTP 403 hatası verir – kitaplığın daha yeni sürümü bunu düzeltir. Sunucu kendiliğinden yeniden başlar.",
   "mg.enable": "Etkinleştir",
   "mg.disable": "Devre dışı bırak",
   "mg.enabledDone": "etkinleştirildi",

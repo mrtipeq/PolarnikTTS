@@ -10,6 +10,7 @@
   "common.synthesizing": "đang tổng hợp…",
   "common.synthesis": "tổng hợp",
   "common.fromCache": "từ bộ nhớ đệm",
+  "common.engineLoading": "đang tải…",
 
   "panel.enabled": "Bật thuyết minh",
   "panel.language": "Ngôn ngữ thuyết minh",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Tải mô hình",
   "mg.install": "Cài đặt",
   "mg.reinstall": "Cài lại (sửa PyTorch cho GPU này)",
+  "mg.updatePackage": "Cập nhật edge-tts",
+  "mg.updatePackageHint": "Khi Microsoft thay đổi dịch vụ, giọng Edge lỗi HTTP 403 – phiên bản thư viện mới hơn sẽ khắc phục. Máy chủ sẽ tự khởi động lại.",
   "mg.enable": "Bật",
   "mg.disable": "Tắt",
   "mg.enabledDone": "đã bật",

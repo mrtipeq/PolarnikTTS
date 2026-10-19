@@ -6,6 +6,8 @@ Long operations run as background jobs whose log can be polled.
 
 from __future__ import annotations
 
+import asyncio
+
 import importlib
 import json
 import logging
@@ -90,6 +92,7 @@ class ConfigUpdate(BaseModel):
 class InstallRequest(BaseModel):
     engine: str
     voices: list[str] | None = None     # piper voices to download (default: first one)
+    upgrade: bool = False               # server-venv engines: pip install --upgrade (e.g. edge-tts after an API change)
 
 
 class ImportBundle(BaseModel):
@@ -130,10 +133,15 @@ def build_router(state) -> APIRouter:  # noqa: C901 - one place for all manageme
                                       state.config.translators)
         state.translators, state.default_translator = build_translators(state.config.translators)
         log.info("Engines reloaded: %s", ", ".join(state.engines) or "none")
+        state.warm_up()
 
     @router.get("/catalog")
     async def catalog(request: Request) -> dict[str, Any]:
         guard(request)
+        # blocking: engine checks and isolated-env probes (subprocess importing torch)
+        return await asyncio.to_thread(catalog_sync)
+
+    def catalog_sync() -> dict[str, Any]:
         cfg = load_yaml(config_path)
         engines_cfg = cfg.get("engines") or {}
         out_engines = []
@@ -211,7 +219,7 @@ def build_router(state) -> APIRouter:  # noqa: C901 - one place for all manageme
                 cfg0 = load_yaml(config_path)
                 ecfg = (cfg0.get("engines") or {}).get(req.engine) or {}
                 result = install_engine(req.engine, server_dir, state.config.models_dir, job.write,
-                                        voices=req.voices, engine_cfg=ecfg)
+                                        voices=req.voices, engine_cfg=ecfg, upgrade=req.upgrade)
                 cfg = load_yaml(config_path)
                 cfg.setdefault("engines", {}).setdefault(req.engine, {})["enabled"] = True
                 save_yaml(config_path, cfg)
@@ -500,7 +508,8 @@ def build_router(state) -> APIRouter:  # noqa: C901 - one place for all manageme
     async def reload(request: Request) -> dict[str, Any]:
         guard(request)
         reload_engines()
-        return {"ok": True, "engines_ready": [e for e, en in state.engines.items() if en.ensure_ready()[0]]}
+        ready = await asyncio.to_thread(lambda: [e for e, en in state.engines.items() if en.ensure_ready()[0]])
+        return {"ok": True, "engines_ready": ready}
 
     @router.post("/shutdown")
     async def shutdown(request: Request) -> dict[str, Any]:

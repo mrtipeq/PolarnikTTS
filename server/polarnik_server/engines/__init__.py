@@ -43,8 +43,13 @@ KEY_FROM_TRANSLATOR = {"openai_tts": "openai", "gemini_tts": "gemini"}
 
 
 def build_engines(engines_cfg: dict[str, dict[str, Any]], models_dir, server_dir=None,
-                  translators_cfg: dict[str, Any] | None = None) -> dict[str, Engine]:
-    """Instantiate every enabled engine from the config."""
+                  translators_cfg: dict[str, Any] | None = None, check: bool = False) -> dict[str, Engine]:
+    """Instantiate every enabled engine from the config.
+
+    Readiness checks are NOT run here by default: isolated engines (Chatterbox, XTTS) start a
+    worker that imports torch, which can take tens of seconds on a cold start. The server runs
+    the checks in the background (State.warm_up) after it is already listening on its port.
+    """
     from pathlib import Path
 
     server_dir = Path(server_dir) if server_dir else Path(models_dir).parent
@@ -76,6 +81,7 @@ def build_engines(engines_cfg: dict[str, dict[str, Any]], models_dir, server_dir
             engine = cls(cfg, models_dir)
         engine.id = engine_id
         out[engine_id] = engine
-        ready, reason = engine.ensure_ready()
-        log.info("Engine %-12s %s%s", engine_id, "ready" if ready else "NOT ready", f" ({reason})" if reason else "")
+        if check:
+            ready, reason = engine.ensure_ready()
+            log.info("Engine %-12s %s%s", engine_id, "ready" if ready else "NOT ready", f" ({reason})" if reason else "")
     return out

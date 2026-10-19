@@ -169,6 +169,14 @@ export function createManager({ root, getClient, onChanged, t, targetLang }) {
       b.addEventListener("click", () => startJob(e.id));
       actions.appendChild(b);
     }
+    if (e.installed && !e.isolated && e.extra === "edge") {
+      // edge-tts follows an unofficial Microsoft API; after a service change only a newer release works (HTTP 403)
+      const b = h("button", "", t("mg.updatePackage"));
+      b.type = "button";
+      b.title = t("mg.updatePackageHint");
+      b.addEventListener("click", () => startJobWith(() => getClient().manageInstall(e.id, null, true)));
+      actions.appendChild(b);
+    }
     if (e.installed) {
       const b = h("button", "", e.enabled ? t("mg.disable") : t("mg.enable"));
       b.type = "button";

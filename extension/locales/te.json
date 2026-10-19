@@ -10,6 +10,7 @@
   "common.synthesizing": "సంశ్లేషణ జరుగుతోంది…",
   "common.synthesis": "సంశ్లేషణ",
   "common.fromCache": "కాష్ నుండి",
+  "common.engineLoading": "లోడ్ అవుతోంది…",
 
   "panel.enabled": "వాయిస్-ఓవర్ ఆన్",
   "panel.language": "వాయిస్-ఓవర్ భాష",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "మోడల్ డౌన్‌లోడ్",
   "mg.install": "ఇన్‌స్టాల్",
   "mg.reinstall": "మళ్లీ ఇన్‌స్టాల్ (ఈ GPU కోసం PyTorch సరిచేయండి)",
+  "mg.updatePackage": "edge-tts నవీకరించండి",
+  "mg.updatePackageHint": "Microsoft సేవను మార్చినప్పుడు Edge స్వరాలు HTTP 403 లోపం ఇస్తాయి – లైబ్రరీ కొత్త వెర్షన్ దీన్ని సరిచేస్తుంది. సర్వర్ దానంతట అదే మళ్లీ ప్రారంభమవుతుంది.",
   "mg.enable": "ఆన్ చేయండి",
   "mg.disable": "ఆఫ్ చేయండి",
   "mg.enabledDone": "ఆన్ అయింది",

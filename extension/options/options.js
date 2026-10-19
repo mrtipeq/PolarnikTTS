@@ -34,6 +34,8 @@ async function ensureHostPermission(url, interactive) {
   return chrome.permissions.request({ origins: [pattern] });
 }
 
+let warmupGen = 0;
+
 function fillEngines(engines) {
   enginesCache = engines;
   const sel = $("engine");
@@ -43,12 +45,13 @@ function fillEngines(engines) {
     const opt = document.createElement("option");
     opt.value = e.id;
     const cannot = e.langs?.length && !e.langs.includes(lang);
-    opt.textContent = !e.ready ? `${e.name} [${e.id}] – ${t("opt.unavailable")}: ${e.reason}`
+    opt.textContent = e.loading ? `${e.name} [${e.id}] – ${t("common.engineLoading")}`
+      : !e.ready ? `${e.name} [${e.id}] – ${t("opt.unavailable")}: ${e.reason}`
       : cannot ? `${e.name} [${e.id}] – ${t("panel.engineNoLang", { name: TARGET_LANGS[lang] || lang })}` : `${e.name} [${e.id}]`;
     opt.disabled = !e.ready || cannot;
     sel.appendChild(opt);
   }
-  sel.value = engines.some((e) => e.id === settings.engine && e.ready) ? settings.engine : "";
+  sel.value = engines.some((e) => e.id === settings.engine && (e.ready || e.loading)) ? settings.engine : "";
   fillVoices();
 }
 
@@ -96,8 +99,19 @@ async function connect(interactive = false) {
     const cuda = health.cuda?.available ? `CUDA: ${health.cuda.device} (${health.cuda.vram_gb} GB)` : `CUDA: ${t("opt.noCuda")}`;
     const info = $("serverInfo");
     info.classList.remove("hidden");
-    info.innerHTML = `PolarnikTTS ${health.version}, ${cuda}<br>` +
-      engines.map((e) => e.ready ? `✔ ${e.id}` : `<span class="bad">✘ ${e.id}: ${e.reason}</span>`).join("<br>");
+    const engineLines = (list) => list.map((e) => e.loading ? `<span class="muted">⏳ ${e.id}: ${t("common.engineLoading")}</span>`
+      : e.ready ? `✔ ${e.id}` : `<span class="bad">✘ ${e.id}: ${e.reason}</span>`).join("<br>");
+    info.innerHTML = `PolarnikTTS ${health.version}, ${cuda}<br>` + engineLines(engines);
+    if (engines.some((e) => e.loading)) {
+      // heavy engines (Chatterbox/XTTS: torch import) finish loading after the server is up
+      const gen = ++warmupGen;
+      client.engines(90).then((full) => {
+        if (gen !== warmupGen) return;
+        fillEngines(full);
+        info.innerHTML = `PolarnikTTS ${health.version}, ${cuda}<br>` + engineLines(full);
+        manager?.refresh();
+      }).catch(() => {});
+    }
     setStatus($("serverStatus"), t("opt.connected"), "ok");
     $("btnStart").classList.add("hidden");
     $("btnStop").classList.toggle("hidden", !isLocalUrl(url));

@@ -19,7 +19,8 @@ export class ServerClient {
   }
 
   health() { return this.getJson("/health"); }
-  engines() { return this.getJson("/engines"); }
+  // wait > 0: long-poll until the server has finished checking its engines (warm-up after start)
+  engines(wait = 0) { return this.getJson(wait > 0 ? `/engines?wait=${wait}` : "/engines"); }
   translators() { return this.getJson("/translators"); }
 
   async postJson(path, body) {
@@ -32,7 +33,7 @@ export class ServerClient {
 
   // ---- management API (local-only on the server side) ----
   manageCatalog() { return this.getJson("/manage/catalog"); }
-  manageInstall(engine, voices) { return this.postJson("/manage/install", { engine, voices: voices || null }); }
+  manageInstall(engine, voices, upgrade = false) { return this.postJson("/manage/install", { engine, voices: voices || null, upgrade }); }
   manageJob(id, tail = 40) { return this.getJson(`/manage/jobs/${id}?tail=${tail}`); }
   languages() { return this.getJson("/languages"); }
   manageOllama() { return this.getJson("/manage/ollama"); }

@@ -29,7 +29,9 @@ async function init() {
     const health = await new ServerClient(settings.serverUrl, settings.serverToken).health();
     $("serverDot").className = "dot ok";
     const ready = health.engines_ready || [];
-    $("serverText").textContent = `v${health.version} · ${ready.length ? engines(ready.length) : t("popup.noEngines")}`;
+    const loading = health.engines_loading || [];
+    $("serverText").textContent = `v${health.version} · ${ready.length ? engines(ready.length) : t("popup.noEngines")}`
+      + (loading.length ? ` · ${t("common.engineLoading")} ${loading.join(", ")}` : "");
     $("serverText").title = ready.join(", ");
     $("startRow").hidden = true;
   } catch {

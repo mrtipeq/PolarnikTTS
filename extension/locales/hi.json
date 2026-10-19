@@ -10,6 +10,7 @@
   "common.synthesizing": "संश्लेषण हो रहा है…",
   "common.synthesis": "संश्लेषण",
   "common.fromCache": "कैश से",
+  "common.engineLoading": "लोड हो रहा है…",
 
   "panel.enabled": "वॉइस-ओवर चालू",
   "panel.language": "वॉइस-ओवर की भाषा",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "मॉडल डाउनलोड करें",
   "mg.install": "इंस्टॉल करें",
   "mg.reinstall": "फिर से इंस्टॉल करें (इस GPU के लिए PyTorch ठीक करें)",
+  "mg.updatePackage": "edge-tts अपडेट करें",
+  "mg.updatePackageHint": "Microsoft सेवा बदलता है तो Edge आवाज़ें HTTP 403 त्रुटि देती हैं – लाइब्रेरी का नया संस्करण इसे ठीक करता है। सर्वर अपने आप पुनः आरंभ होगा।",
   "mg.enable": "चालू करें",
   "mg.disable": "बंद करें",
   "mg.enabledDone": "चालू हुआ",

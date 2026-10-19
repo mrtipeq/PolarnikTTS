@@ -10,6 +10,7 @@
   "common.synthesizing": "synthesizing…",
   "common.synthesis": "synthesis",
   "common.fromCache": "from cache",
+  "common.engineLoading": "loading…",
 
   "panel.enabled": "Voice-over on",
   "panel.language": "Voice-over language",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Download model",
   "mg.install": "Install",
   "mg.reinstall": "Reinstall (fix PyTorch for this GPU)",
+  "mg.updatePackage": "Update edge-tts",
+  "mg.updatePackageHint": "When Microsoft changes the service, Edge voices fail with HTTP 403 - a newer library release fixes it. The server restarts by itself.",
   "mg.enable": "Enable",
   "mg.disable": "Disable",
   "mg.enabledDone": "enabled",

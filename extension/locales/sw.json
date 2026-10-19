@@ -10,6 +10,7 @@
   "common.synthesizing": "inaunda sauti…",
   "common.synthesis": "uundaji wa sauti",
   "common.fromCache": "kutoka akiba",
+  "common.engineLoading": "inapakia…",
 
   "panel.enabled": "Sauti ya msimulizi imewashwa",
   "panel.language": "Lugha ya msimulizi",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Pakua modeli",
   "mg.install": "Sakinisha",
   "mg.reinstall": "Sakinisha upya (rekebisha PyTorch kwa GPU hii)",
+  "mg.updatePackage": "Sasisha edge-tts",
+  "mg.updatePackageHint": "Microsoft inapobadilisha huduma, sauti za Edge hushindwa kwa HTTP 403 – toleo jipya la maktaba hurekebisha hili. Seva itajiwasha upya yenyewe.",
   "mg.enable": "Washa",
   "mg.disable": "Zima",
   "mg.enabledDone": "imewashwa",

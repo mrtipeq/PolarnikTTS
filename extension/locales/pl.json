@@ -10,6 +10,7 @@
   "common.synthesizing": "synteza…",
   "common.synthesis": "synteza",
   "common.fromCache": "z cache",
+  "common.engineLoading": "ładuje się…",
 
   "panel.enabled": "Lektor włączony",
   "panel.language": "Język lektora",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Pobierz model",
   "mg.install": "Zainstaluj",
   "mg.reinstall": "Przeinstaluj (napraw PyTorch dla tej karty)",
+  "mg.updatePackage": "Aktualizuj edge-tts",
+  "mg.updatePackageHint": "Gdy Microsoft zmieni usługę, głosy Edge zwracają błąd 403 – pomaga nowsza wersja biblioteki. Serwer zrestartuje się sam.",
   "mg.enable": "Włącz",
   "mg.disable": "Wyłącz",
   "mg.enabledDone": "włączono",

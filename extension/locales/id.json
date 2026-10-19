@@ -10,6 +10,7 @@
   "common.synthesizing": "menyintesis…",
   "common.synthesis": "sintesis",
   "common.fromCache": "dari cache",
+  "common.engineLoading": "memuat…",
 
   "panel.enabled": "Sulih suara aktif",
   "panel.language": "Bahasa sulih suara",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Unduh model",
   "mg.install": "Pasang",
   "mg.reinstall": "Pasang ulang (perbaiki PyTorch untuk GPU ini)",
+  "mg.updatePackage": "Perbarui edge-tts",
+  "mg.updatePackageHint": "Saat Microsoft mengubah layanannya, suara Edge gagal dengan HTTP 403 – versi pustaka yang lebih baru memperbaikinya. Server akan memulai ulang sendiri.",
   "mg.enable": "Aktifkan",
   "mg.disable": "Nonaktifkan",
   "mg.enabledDone": "diaktifkan",

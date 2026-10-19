@@ -8,11 +8,35 @@ Install: pip install -e ".[edge]"
 
 from __future__ import annotations
 
+import sys
+
 from ..audio import probe_duration
 from ..languages import LANGUAGES
 from .base import AudioResult, Engine, Voice
 
 ALL_VOICES = [Voice(vid, label, lang) for lang, meta in LANGUAGES.items() for vid, label in meta["edge"]]
+
+
+def edge_tts_version() -> str:
+    try:
+        from importlib.metadata import version
+
+        return version("edge-tts")
+    except Exception:  # noqa: BLE001
+        return "?"
+
+
+def describe_error(exc: Exception) -> str:
+    """Readable message for the usual failures of the unofficial Edge service."""
+    text = f"{type(exc).__name__}: {exc}"
+    if "403" in text and ("Handshake" in text or "Invalid response status" in text):
+        return (f"Microsoft rejected the connection (HTTP 403). edge-tts {edge_tts_version()} is out of date "
+                "for the current Edge service - update it (Options > Engines > Microsoft Edge > Update) "
+                f"or run: \"{sys.executable}\" -m pip install -U edge-tts, then restart the server. "
+                "If it is already the newest version, check that the system clock is correct.")
+    if "Cannot connect" in text or "ClientConnector" in text or "TimeoutError" in text:
+        return f"cannot reach speech.platform.bing.com (no internet or blocked by a firewall/proxy): {text}"
+    return text
 
 
 class EdgeTtsEngine(Engine):
@@ -53,12 +77,15 @@ class EdgeTtsEngine(Engine):
         )
         chunks: list[bytes] = []
         last_end_ms = 0.0
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                chunks.append(chunk["data"])
-            elif chunk["type"] in ("WordBoundary", "SentenceBoundary"):
-                # offsets are in 100 ns units
-                last_end_ms = max(last_end_ms, (chunk["offset"] + chunk["duration"]) / 10_000)
+        try:
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    chunks.append(chunk["data"])
+                elif chunk["type"] in ("WordBoundary", "SentenceBoundary"):
+                    # offsets are in 100 ns units
+                    last_end_ms = max(last_end_ms, (chunk["offset"] + chunk["duration"]) / 10_000)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(describe_error(exc)) from exc
         data = b"".join(chunks)
         duration = probe_duration(data, "audio/mpeg")
         if duration is None and last_end_ms:

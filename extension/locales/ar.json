@@ -10,6 +10,7 @@
   "common.synthesizing": "جارٍ التوليد…",
   "common.synthesis": "توليد",
   "common.fromCache": "من الذاكرة المؤقتة",
+  "common.engineLoading": "جارٍ التحميل…",
 
   "panel.enabled": "التعليق الصوتي مفعّل",
   "panel.language": "لغة التعليق الصوتي",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "تنزيل النموذج",
   "mg.install": "تثبيت",
   "mg.reinstall": "إعادة التثبيت (إصلاح PyTorch لهذه البطاقة)",
+  "mg.updatePackage": "تحديث edge-tts",
+  "mg.updatePackageHint": "عندما تغيّر Microsoft الخدمة تفشل أصوات Edge بالخطأ HTTP 403، ويحلّ ذلك إصدارٌ أحدث من المكتبة. يُعاد تشغيل الخادم تلقائيًا.",
   "mg.enable": "تفعيل",
   "mg.disable": "تعطيل",
   "mg.enabledDone": "تم التفعيل",

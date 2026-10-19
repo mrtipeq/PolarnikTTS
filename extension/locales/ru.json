@@ -10,6 +10,7 @@
   "common.synthesizing": "синтез…",
   "common.synthesis": "синтез",
   "common.fromCache": "из кэша",
+  "common.engineLoading": "загрузка…",
 
   "panel.enabled": "Озвучка включена",
   "panel.language": "Язык озвучки",
@@ -186,6 +187,8 @@
   "mg.downloadModel": "Скачать модель",
   "mg.install": "Установить",
   "mg.reinstall": "Переустановить (исправить PyTorch для этой видеокарты)",
+  "mg.updatePackage": "Обновить edge-tts",
+  "mg.updatePackageHint": "Когда Microsoft меняет сервис, голоса Edge выдают ошибку HTTP 403 – помогает новая версия библиотеки. Сервер перезапустится сам.",
   "mg.enable": "Включить",
   "mg.disable": "Выключить",
   "mg.enabledDone": "включено",
