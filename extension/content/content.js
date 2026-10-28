@@ -68,6 +68,7 @@
     button.className = "ytp-button polarnik-btn";
     button.innerHTML = ICON;
     button.addEventListener("click", () => {
+      if (session?.status === "nocaptions") restartSession();   // check again right away
       if (!panel) {
         const host = document.querySelector(".html5-video-player") || controls.parentElement;
         panel = createPanel({
@@ -182,7 +183,13 @@
       const lines = eventsToLines(events);
       this.sentences = linesToSentences(lines);
       log(`${this.sentences.length} sentences (${this.mode}) for ${this.videoId}`);
-      if (!this.sentences.length) { this.status = "nocaptions"; updateButton(); return; }
+      if (!this.sentences.length) {
+        // a track exists but its text came back empty (pot race, unexpected format) - this is
+        // not "no captions": report it as an error so the user is not told the video has none
+        warn(`caption track parsed to ${events.length} events / ${lines.length} lines - nothing to speak`);
+        this.fail(t("err.noCaptionBody"));
+        return;
+      }
       if (this.mode !== "server") this.sentences.forEach((s) => { s.pl = s.text; });
       else if (!this.video.paused) {
         this.hold = { until: Date.now() + 20000 };
@@ -212,17 +219,26 @@
     async loadCaptions() {
       const info = await page("playerInfo");
       if (!info.ready) throw new Error("player not ready");
-      // Right after navigation the player may not have its caption list yet - poll briefly
-      // before concluding the video has no captions at all.
+      // Right after navigation (and in a tab opened in the background, where YouTube defers
+      // loading the player) the caption list can stay empty for a while. Poll for up to
+      // ~12 s of *visible* time before concluding the video has no captions; the session
+      // keeps watching afterwards and restarts as soon as a track shows up (watchForCaptions).
       let ct = null;
-      for (let attempt = 0; attempt < 8 && !this.destroyed; attempt++) {
+      for (let waited = 0; waited < 12000 && !this.destroyed;) {
         ct = await page("captionTracks");
         if (!ct.ok) throw new Error(ct.error);
-        if (ct.tracks.length) break;
+        if (ct.tracks.length && (!ct.videoId || ct.videoId === this.videoId)) break;
         await new Promise((res) => setTimeout(res, 400));
+        if (!document.hidden) waited += 400;
       }
       if (this.destroyed) return null;
-      if (!ct.tracks.length) { log("no caption tracks reported by the player"); this.status = "nocaptions"; updateButton(); return null; }
+      if (!ct.tracks.length || (ct.videoId && ct.videoId !== this.videoId)) {
+        log("no caption tracks reported by the player", ct.diag || {}, "player video:", ct.videoId, "page video:", this.videoId);
+        this.status = "nocaptions";
+        updateButton();
+        watchForCaptions(this);
+        return null;
+      }
       const target = targetLang();
       this.targetLang = target;
       const track = VoiceOverSession.pickTrack(ct.tracks, target);
@@ -231,7 +247,7 @@
       if (normalizeLangTag(wantLang) === target) this.mode = "native";      // the track is already in the target language
       else this.mode = (settings.translator === "youtube" || this.forceYoutube) ? "youtube" : "server";
       const wantTlang = this.mode === "youtube" ? youtubeTlang(target) : "";
-      log("caption tracks:", ct.tracks.map((t) => `${t.languageCode}${t.kind ? "/" + t.kind : ""}`).join(", "),
+      log("caption tracks:", ct.tracks.map((t) => `${t.languageCode}${t.kind ? "/" + t.kind : ""} [${t.source}]`).join(", "),
         "-> using", wantLang, wantKind || "manual", wantTlang ? `translated to ${wantTlang} by YouTube` : "", `(${this.mode})`);
 
       const matches = (urlStr) => {
@@ -553,20 +569,64 @@
     return location.pathname === "/watch" ? new URLSearchParams(location.search).get("v") : null;
   }
 
+  let restartGen = 0;
   async function restartSession(opts = {}) {
     session?.destroy();
     session = null;
+    stopCaptionWatch();
     notice = opts.notice || "";
+    const gen = ++restartGen;
     const videoId = currentVideoId();
-    const video = document.querySelector("video.html5-main-video");
-    if (!videoId || !video || !settings.enabled) { updateButton(); return; }
-    // wait for the player bridge
-    for (let i = 0; i < 20; i++) {
+    if (!videoId || !settings.enabled) { updateButton(); return; }
+    // YouTube does not build the player of a tab opened in the background until it is shown
+    while (document.hidden && gen === restartGen) await new Promise((r) => setTimeout(r, 500));
+    // wait for the player and the bridge to switch to this video (slow machines, many tabs)
+    let video = null;
+    for (let i = 0; i < 60 && gen === restartGen; i++) {
+      video = document.querySelector("video.html5-main-video");
       const info = await page("playerInfo");
-      if (info.ready && info.videoId === videoId) break;
+      if (video && info.ready && info.videoId === videoId) break;
       await new Promise((r) => setTimeout(r, 250));
     }
+    if (gen !== restartGen || videoId !== currentVideoId()) return;   // superseded by a newer restart
+    if (!video) { updateButton(); return; }
     session = new VoiceOverSession(videoId, video, !!opts.forceYoutube);
+  }
+
+  // ---- "no captions" is not final -------------------------------------------------
+  // Captions can appear later: the user turns CC on, the tab becomes visible, the player
+  // finishes loading its caption module. While the status is "nocaptions", watch for that
+  // and restart the session as soon as a track is listed.
+  let captionWatch = null;
+  function stopCaptionWatch() {
+    if (!captionWatch) return;
+    clearInterval(captionWatch.timer);
+    window.removeEventListener("message", captionWatch.onMsg);
+    document.removeEventListener("visibilitychange", captionWatch.check);
+    captionWatch = null;
+  }
+  function watchForCaptions(forSession) {
+    stopCaptionWatch();
+    const started = Date.now();
+    const w = { busy: false };
+    w.check = async () => {
+      if (w.busy || document.hidden) return;
+      if (session !== forSession || forSession.status !== "nocaptions" || forSession.videoId !== currentVideoId()) { stopCaptionWatch(); return; }
+      if (Date.now() - started > 10 * 60 * 1000) { stopCaptionWatch(); return; }
+      w.busy = true;
+      try {
+        const ct = await page("captionTracks");
+        if (ct.ok && ct.tracks.length && (!ct.videoId || ct.videoId === forSession.videoId)) {
+          log("caption tracks appeared - restarting the voice-over", ct.tracks.map((t) => `${t.languageCode}/${t.kind || "manual"}`).join(", "));
+          restartSession();
+        }
+      } finally { w.busy = false; }
+    };
+    w.onMsg = (ev) => { if (ev.source === window && ev.data?.__polarnik === "timedtext") setTimeout(w.check, 300); };
+    w.timer = setInterval(w.check, 3000);
+    window.addEventListener("message", w.onMsg);
+    document.addEventListener("visibilitychange", w.check);
+    captionWatch = w;
   }
 
   function onNavigate() {

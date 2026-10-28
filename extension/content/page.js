@@ -59,37 +59,81 @@
     },
 
     // Load the captions module and list the available tracks plus the one currently shown.
-    // Two sources are merged: the captions module's tracklist (empty until the module has
-    // finished loading, and on some videos it omits the auto-generated track until the CC
-    // button was used) and the player response, which lists every track - including
-    // "asr" ones - as soon as the video is loaded.
+    // Several sources are merged, because each of them can be empty on its own:
+    //  - the captions module's tracklist (empty until the module has loaded; without
+    //    {includeAsr: true} it leaves out auto-generated tracks),
+    //  - the player response of the current video (getPlayerResponse, ytInitialPlayerResponse,
+    //    the watch page's own data) - lists every track, "asr" included,
+    //  - timedtext requests the player has already made for this video (our hooks and the
+    //    Resource Timing list): if the player fetched a track, the track exists.
     captionTracks() {
       const p = player();
       if (!p) return { ok: false, error: "no player" };
       try {
         if (typeof p.loadModule === "function") p.loadModule("captions");
+        let videoId = "";
+        try { videoId = p.getVideoData()?.video_id || ""; } catch { /* ignore */ }
         const tracks = [];
         const seen = new Set();
-        const add = (languageCode, kind, name) => {
+        const diag = { module: 0, response: 0, page: 0, requests: 0 };
+        const add = (languageCode, kind, name, source) => {
           if (!languageCode) return;
           const key = `${languageCode}|${kind || ""}`;
           if (seen.has(key)) return;
           seen.add(key);
-          tracks.push({ languageCode, kind: kind || "", name: name || "" });
+          tracks.push({ languageCode, kind: kind || "", name: name || "", source });
         };
-        for (const t of p.getOption("captions", "tracklist") || []) add(t.languageCode, t.kind, t.displayName || t.languageName);
-        let fromResponse = [];
+        const fromVss = (vss) => {                 // ".en" = manual English, "a.en" = auto English
+          const m = /^(a?)\.(.+)$/.exec(String(vss || ""));
+          return m ? { languageCode: m[2], kind: m[1] ? "asr" : "" } : null;
+        };
+        const addModuleTrack = (t) => {
+          if (!t) return;
+          const v = fromVss(t.vss_id || t.vssId);
+          add(t.languageCode || t.language_code || v?.languageCode, t.kind || v?.kind, t.displayName || t.languageName || t.name, "module");
+        };
+        const moduleLists = [];
+        try { moduleLists.push(p.getOption("captions", "tracklist", { includeAsr: true }) || []); } catch { /* ignore */ }
+        try { moduleLists.push(p.getOption("captions", "tracklist") || []); } catch { /* ignore */ }
+        for (const list of moduleLists) for (const t of list) { diag.module++; addModuleTrack(t); }
+
+        const addResponseTracks = (pr, source) => {
+          if (!pr) return 0;
+          const vid = pr.videoDetails?.videoId;
+          if (videoId && vid && vid !== videoId) return 0;        // stale data of the previous video
+          const list = pr.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+          for (const t of list) {
+            const v = fromVss(t.vssId);
+            const name = t.name?.simpleText || (t.name?.runs || []).map((r) => r.text).join("") || "";
+            add(t.languageCode || v?.languageCode, t.kind || v?.kind, name, source);
+          }
+          return list.length;
+        };
+        try { diag.response += addResponseTracks(typeof p.getPlayerResponse === "function" ? p.getPlayerResponse() : null, "response"); } catch { /* ignore */ }
+        try { diag.page += addResponseTracks(window.ytInitialPlayerResponse, "initial"); } catch { /* ignore */ }
         try {
-          const pr = typeof p.getPlayerResponse === "function" ? p.getPlayerResponse() : null;
-          fromResponse = pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+          const flexy = document.querySelector("ytd-watch-flexy");
+          diag.page += addResponseTracks(flexy?.playerData || flexy?.__data?.playerData, "page");
         } catch { /* ignore */ }
-        for (const t of fromResponse) {
-          const name = t.name?.simpleText || (t.name?.runs || []).map((r) => r.text).join("") || "";
-          add(t.languageCode, t.kind || (String(t.vssId || "").startsWith("a.") ? "asr" : ""), name);
-        }
-        const current = p.getOption("captions", "track") || {};
+
+        const addFromUrl = (url) => {
+          try {
+            const q = new URL(url, location.origin).searchParams;
+            if (videoId && q.get("v") && q.get("v") !== videoId) return;
+            if (!q.get("lang")) return;
+            diag.requests++;
+            add(q.get("lang"), q.get("kind") || "", "", "request");
+          } catch { /* ignore */ }
+        };
+        for (const c of captured) addFromUrl(c.url);
+        try {
+          for (const e of performance.getEntriesByType("resource")) if (e.name.includes("/api/timedtext")) addFromUrl(e.name);
+        } catch { /* ignore */ }
+
+        let current = {};
+        try { current = p.getOption("captions", "track") || {}; } catch { /* ignore */ }
         return {
-          ok: true, tracks, moduleTracks: (p.getOption("captions", "tracklist") || []).length,
+          ok: true, videoId, tracks, diag,
           current: {
             languageCode: current.languageCode || "", kind: current.kind || "",
             translationLanguage: current.translationLanguage?.languageCode || "",
