@@ -151,6 +151,8 @@ TRANSLATORS: dict[str, dict[str, Any]] = {
     "anthropic": {"type": "anthropic", "name": "Anthropic Claude",
                   "fields": [{"key": "api_key", "type": "secret"}, {"key": "model", "type": "text"}],
                   "defaults": {"model": "claude-haiku-4-5"}},
+    "google": {"type": "google_free", "name": "Google Translate (free, no key)",
+               "fields": [], "defaults": {}, "builtin": True},
     "deepl": {"type": "deepl", "name": "DeepL",
               "fields": [{"key": "api_key", "type": "secret"}, {"key": "base_url", "type": "text"}],
               "defaults": {"base_url": "https://api-free.deepl.com"}},

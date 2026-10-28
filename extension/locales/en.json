@@ -54,11 +54,18 @@
   "status.nocaptions": "this video has no subtitles",
   "status.error": "error – {error}",
   "err.noCaptionBody": "YouTube did not return the subtitle text (try reloading the page)",
+  "err.rateLimited": "YouTube is temporarily blocking caption downloads (HTTP 429 - too many requests). Try again in a few minutes",
+  "err.serverNoGoogle": "the server is too old for the Google Translate fallback - update it (update.cmd) to 0.4.2",
   "err.captionFormat": "unknown subtitle format",
   "err.translation": "translation: {error}",
   "err.serverDown": "server unavailable (open the P panel → Start server)",
   "notice.translatorFallback": "translator \"{translator}\" is not working ({error}) – this video uses YouTube's translation instead",
+  "notice.youtubeRateLimited": "YouTube is refusing to translate the captions right now (HTTP 429 - too many requests), so Google Translate translates them through the server",
+  "notice.youtubeTranslateFailed": "YouTube did not send the translated captions, so Google Translate translates them through the server",
 
+  "popup.copyLog": "Copy log",
+  "popup.copyLogHint": "Copies this tab's diagnostic log to the clipboard - paste it into a bug report",
+  "popup.logCopied": "copied to the clipboard",
   "popup.enabled": "Voice-over on",
   "popup.server": "Server",
   "popup.captions": "Subtitles on this tab",
@@ -265,5 +272,6 @@
   "translator.gemini": "Google Gemini – cloud, API key",
   "translator.ollama": "Ollama – local LLM (e.g. Gemma, Bielik), no key",
   "translator.anthropic": "Anthropic Claude – cloud, API key",
+  "translator.google": "Google Translate - free, no key (fallback when YouTube refuses to translate)",
   "translator.deepl": "DeepL – cloud, API key (free tier: 500k characters/month)"
 }

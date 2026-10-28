@@ -15,9 +15,11 @@
   // player itself received sidesteps that entirely.
   const captured = [];                      // last few {url, body, ts}
   let capturedSeq = 0;
-  function forward(url, body) {
+  function forward(url, body, status = 200) {
     if (!body || body.length < 20) return;   // empty answers are the pot race, ignore them
-    captured.push({ url: String(url), body, ts: Date.now(), seq: ++capturedSeq });
+    // status >= 400 (e.g. 429 "too many requests" for YouTube's auto-translation) is kept as
+    // a failed item so content.js can tell "rate limited" from "nothing arrived"
+    captured.push({ url: String(url), body: status >= 400 ? body.slice(0, 300) : body, status, ts: Date.now(), seq: ++capturedSeq });
     while (captured.length > 6) captured.shift();
     window.postMessage({ __polarnik: "timedtext", url: String(url), seq: capturedSeq }, "*");
   }
@@ -47,7 +49,7 @@
     const p = origFetch.apply(this, arguments);
     if (url && url.includes("/api/timedtext")) {
       rememberUrl(String(url));
-      p.then((res) => { try { res.clone().text().then((t) => forward(url, t)).catch(() => {}); } catch { /* ignore */ } })
+      p.then((res) => { try { res.clone().text().then((t) => forward(url, t, res.status)).catch(() => {}); } catch { /* ignore */ } })
         .catch(() => {});
     }
     return p;
@@ -65,10 +67,11 @@
       this.addEventListener("load", () => {
         try {
           const rt = this.responseType;
-          if (rt === "" || rt === "text") forward(this.__polarnikUrl, this.responseText);
-          else if (rt === "json") forward(this.__polarnikUrl, JSON.stringify(this.response));
-          else if (rt === "arraybuffer" && this.response) forward(this.__polarnikUrl, new TextDecoder().decode(this.response));
-          else if (rt === "blob" && this.response) this.response.text().then((t) => forward(this.__polarnikUrl, t)).catch(() => {});
+          const st = this.status;
+          if (rt === "" || rt === "text") forward(this.__polarnikUrl, this.responseText, st);
+          else if (rt === "json") forward(this.__polarnikUrl, JSON.stringify(this.response), st);
+          else if (rt === "arraybuffer" && this.response) forward(this.__polarnikUrl, new TextDecoder().decode(this.response), st);
+          else if (rt === "blob" && this.response) this.response.text().then((t) => forward(this.__polarnikUrl, t, st)).catch(() => {});
         } catch { /* ignore */ }
       });
     }
@@ -205,16 +208,20 @@
       }
       candidates.sort((a, b) => Number(b.exact) - Number(a.exact));
       const tried = new Set();
+      const tries = [];
+      let rateLimited = false;
       for (const c of candidates) {
         if (tried.has(c.url)) continue;
         tried.add(c.url);
         try {
           const r = await origFetch(c.url, { credentials: "include" });
           const body = await r.text();
-          if (r.ok && body.length >= 20) return { ok: true, body, url: c.url, candidates: candidates.length };
-        } catch { /* try the next one */ }
+          tries.push(`HTTP ${r.status} ${body.length} chars${c.exact ? "" : " (tlang adapted)"}`);
+          if (r.status === 429) rateLimited = true;
+          if (r.ok && body.length >= 20) return { ok: true, body, url: c.url, candidates: candidates.length, urls: urls.length };
+        } catch (e) { tries.push(String(e).slice(0, 80)); }
       }
-      return { ok: false, candidates: candidates.length };
+      return { ok: false, candidates: candidates.length, urls: urls.length, tries, rateLimited };
     },
 
     // Captured timedtext responses newer than `afterSeq` (bodies included).

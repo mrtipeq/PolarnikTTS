@@ -8,12 +8,13 @@ from typing import Any
 from .anthropic_tr import AnthropicTranslator
 from .base import Translator, TranslatorInfo  # noqa: F401
 from .deepl_tr import DeepLTranslator
+from .google_free import GoogleFreeTranslator
 from .openai_compat import OpenAICompatTranslator
 
 log = logging.getLogger(__name__)
 
 TRANSLATOR_CLASSES: dict[str, type[Translator]] = {
-    cls.type: cls for cls in (OpenAICompatTranslator, AnthropicTranslator, DeepLTranslator)
+    cls.type: cls for cls in (OpenAICompatTranslator, AnthropicTranslator, DeepLTranslator, GoogleFreeTranslator)
 }
 
 
@@ -41,4 +42,9 @@ def build_translators(translators_cfg: dict[str, Any]) -> tuple[dict[str, Transl
         out[tid] = tr
         ready, reason = tr.info().ready, tr.info().reason
         log.info("Translator %-10s %s%s", tid, "ready" if ready else "NOT ready", f" ({reason})" if reason else "")
+    # Built-in free Google Translate: always available (fallback when YouTube's own
+    # auto-translation is rate limited) unless explicitly disabled in config.yaml.
+    gcfg = (translators_cfg or {}).get("google")
+    if "google" not in out and not (isinstance(gcfg, dict) and gcfg.get("enabled") is False):
+        out["google"] = GoogleFreeTranslator("google", {})
     return out, default

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polarnik-server"
-version = "0.4.1"
+version = "0.4.2"
 description = "PolarnikTTS engine server: pluggable Polish TTS and translation backends for the PolarnikTTS Chrome extension"
 requires-python = ">=3.10"
 license = { text = "MIT" }

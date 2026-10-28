@@ -183,7 +183,7 @@ def build_router(state) -> APIRouter:  # noqa: C901 - one place for all manageme
             tinfo = live.info() if live else None
             out_translators.append({
                 "id": tid, "name": meta["name"], "type": meta["type"],
-                "enabled": bool(tcfg.get("enabled", False)),
+                "enabled": bool(tcfg.get("enabled", bool(meta.get("builtin")))),
                 "ready": bool(tinfo and tinfo.ready), "reason": (tinfo.reason if tinfo else "not loaded"),
                 "fields": meta["fields"],
                 "values": {f["key"]: ("•••" if f["type"] == "secret" and tcfg.get(f["key"]) else

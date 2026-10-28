@@ -71,6 +71,18 @@ async function init() {
     $("capText").textContent = `${lang} (${kind})`;
   }
 
+  // Diagnostic log of the content script, copied to the clipboard for a bug report
+  $("logRow").hidden = false;
+  $("btnLog").addEventListener("click", async () => {
+    try {
+      const r = await chrome.tabs.sendMessage(tab.id, { type: "get_log" });
+      await navigator.clipboard.writeText(r?.text || "(empty)");
+      $("logText").textContent = t("popup.logCopied");
+    } catch (e) {
+      $("logText").textContent = t("popup.refreshTab");
+    }
+  });
+
   // Pipeline status from the content script
   try {
     const info = await chrome.tabs.sendMessage(tab.id, { type: "page_info" });

@@ -11,8 +11,26 @@
   const { eventsToLines, linesToSentences, isPolishLike, parseTimedtext } = await import(chrome.runtime.getURL("content/captions.js"));
   const { initI18n, resolveTargetLang, normalizeLangTag, youtubeTlang, TARGET_LANGS } = await import(chrome.runtime.getURL("lib/i18n.js"));
 
-  const log = (...a) => console.info(TAG, ...a);
-  const warn = (...a) => console.warn(TAG, ...a);
+  // Diagnostic log: console + an in-memory ring buffer the popup can copy ("Copy log").
+  const LOG = [];
+  const t0 = Date.now();
+  function remember(level, args) {
+    const text = args.map((a) => {
+      if (typeof a === "string") return a;
+      try { return JSON.stringify(a); } catch { return String(a); }
+    }).join(" ");
+    LOG.push(`${new Date().toISOString().slice(11, 23)} +${((Date.now() - t0) / 1000).toFixed(1)}s ${level} ${text}`);
+    while (LOG.length > 400) LOG.shift();
+  }
+  const log = (...a) => { remember("INFO", a); console.info(TAG, ...a); };
+  const warn = (...a) => { remember("WARN", a); console.warn(TAG, ...a); };
+  /** Short description of a timedtext URL for the log (no tokens). */
+  const describeUrl = (url) => {
+    try {
+      const q = new URL(url, location.origin).searchParams;
+      return `v=${q.get("v")} lang=${q.get("lang") || "-"} kind=${q.get("kind") || "-"} tlang=${q.get("tlang") || "-"} fmt=${q.get("fmt") || "-"} pot=${q.get("pot") ? "yes" : "NO"}`;
+    } catch { return String(url).slice(0, 80); }
+  };
 
   // ---- bridge to page.js (MAIN world) ------------------------------------------------
   let reqId = 0;
@@ -256,60 +274,21 @@
       log("caption tracks:", ct.tracks.map((t) => `${t.languageCode}${t.kind ? "/" + t.kind : ""} [${t.source}]`).join(", "),
         "-> using", wantLang, wantKind || "manual", wantTlang ? `translated to ${wantTlang} by YouTube` : "", `(${this.mode})`);
 
-      const matches = (urlStr) => {
-        try {
-          const u = new URL(urlStr, location.origin);
-          const q = u.searchParams;
-          if (q.get("v") && q.get("v") !== this.videoId) return false;
-          return (q.get("lang") || "") === wantLang && (q.get("kind") || "") === wantKind && (q.get("tlang") || "") === wantTlang;
-        } catch { return false; }
-      };
-
-      // 1) maybe the player already loaded exactly this track (captured by page.js hooks)
-      let body = null;
-      const already = await page("capturedTimedtext", { afterSeq: 0 });
-      const hit = (already.items || []).filter((c) => matches(c.url)).pop();
-      if (hit) { body = hit.body; log("caption body: captured from the player"); }
-
-      // 2) re-fetch a timedtext URL the player already used for this track (any translation):
-      //    it carries the pot token, so YouTube answers with the real text
-      const fetchKnown = async () => {
-        const r = await page("fetchTimedtext", { videoId: this.videoId, lang: wantLang, kind: wantKind, tlang: wantTlang }, 20000);
-        if (r.ok) log(`caption body: re-fetched a URL the player used (${r.body.length} chars)`);
-        return r.ok ? r.body : null;
-      };
-      if (!body) body = await fetchKnown();
-
-      // 3) ask the player to load the track and take its response (hooks or Resource Timing).
-      //    Switching captions off first makes the player request it even if this exact track
-      //    is already selected (otherwise it serves it from memory and nothing is fetched).
-      if (!body) {
-        const wasOn = !!ct.current.languageCode;
-        let seq = already.seq || 0;
-        for (let attempt = 0; attempt < 3 && !body && !this.destroyed; attempt++) {
-          await page("hideCaptions");
-          await new Promise((res) => setTimeout(res, 300));
-          const r = await page("setCaptionTrack", { languageCode: wantLang, kind: wantKind, translationLanguage: wantTlang });
-          if (!r.ok) throw new Error(r.error);
-          const deadline = Date.now() + (attempt === 0 ? 10000 : 8000);   // a long auto-translated track can take a while
-          let lastKnown = 0;
-          while (Date.now() < deadline && !body && !this.destroyed) {
-            await new Promise((res) => setTimeout(res, 200));
-            const got = await page("capturedTimedtext", { afterSeq: seq });
-            seq = got.seq || seq;
-            const m = (got.items || []).filter((c) => matches(c.url)).pop();
-            if (m) { body = m.body; log("caption body: captured after selecting the track"); break; }
-            if (Date.now() - lastKnown > 1000) { lastKnown = Date.now(); body = await fetchKnown(); }
-          }
-          // 4) last resort: the URL sniffed by the service worker (webRequest)
-          if (!body) body = await this.refetchSniffed(wantLang, wantKind, wantTlang);
-          if (!body) log(`no caption body yet (attempt ${attempt + 1}), retrying`);
-        }
-        // Leave the captions as the user had them: hidden, or their previous track.
-        if (!wasOn) page("hideCaptions");
-        else page("setCaptionTrack", { languageCode: ct.current.languageCode, kind: ct.current.kind, translationLanguage: ct.current.translationLanguage });
+      let got = await this.fetchTrackBody(ct, wantLang, wantKind, wantTlang);
+      if (!got.body && this.mode === "youtube" && !this.destroyed) {
+        // YouTube refuses its own auto-translation surprisingly often (HTTP 429 "too many
+        // requests" from the translation backend). Take the original track instead and let
+        // the engine server translate it - with the built-in free Google Translate unless the
+        // user has a server translator of their own.
+        this.mode = "server";
+        this.translatorOverride = "google";
+        notice = t(got.rateLimited ? "notice.youtubeRateLimited" : "notice.youtubeTranslateFailed");
+        warn(`YouTube translation unavailable${got.rateLimited ? " (HTTP 429)" : ""} - using the original track and the server translator "google"`);
+        got = await this.fetchTrackBody(ct, wantLang, wantKind, "");
       }
-      if (!body) throw new Error(t("err.noCaptionBody"));
+      if (this.destroyed) return null;
+      const body = got.body;
+      if (!body) throw new Error(t(got.rateLimited ? "err.rateLimited" : "err.noCaptionBody"));
 
       const events = parseTimedtext(body);
       if (!events) throw new Error(t("err.captionFormat"));
@@ -320,10 +299,83 @@
       return events;
     }
 
+    /** Get the text of one caption track: what the player already loaded, a re-fetch of a URL
+     *  it used, or a fresh load requested from the player. Returns {body, rateLimited}. */
+    async fetchTrackBody(ct, wantLang, wantKind, wantTlang) {
+      let rateLimited = false;
+      const matches = (urlStr) => {
+        try {
+          const q = new URL(urlStr, location.origin).searchParams;
+          if (q.get("v") && q.get("v") !== this.videoId) return false;
+          return (q.get("lang") || "") === wantLang && (q.get("kind") || "") === wantKind && (q.get("tlang") || "") === wantTlang;
+        } catch { return false; }
+      };
+      const usable = (c) => {
+        if (!matches(c.url)) return false;
+        if (c.status >= 400) { if (c.status === 429) rateLimited = true; return false; }
+        return true;
+      };
+
+      // 1) maybe the player already loaded exactly this track (captured by page.js hooks)
+      let body = null;
+      const already = await page("capturedTimedtext", { afterSeq: 0 });
+      log(`current player track: ${ct.current.languageCode || "off"}/${ct.current.kind || "-"} tlang=${ct.current.translationLanguage || "-"}; sources`, ct.diag || {});
+      log(`want lang=${wantLang} kind=${wantKind || "-"} tlang=${wantTlang || "-"}; already captured: ${(already.items || []).length}`,
+        (already.items || []).map((c) => `[${describeUrl(c.url)} HTTP ${c.status ?? "?"} ${c.body.length} chars]`).join(" "));
+      const hit = (already.items || []).filter(usable).pop();
+      if (hit) { body = hit.body; log("caption body: captured from the player"); }
+
+      // 2) re-fetch a timedtext URL the player already used for this track (any translation):
+      //    it carries the pot token, so YouTube answers with the real text
+      const fetchKnown = async () => {
+        const r = await page("fetchTimedtext", { videoId: this.videoId, lang: wantLang, kind: wantKind, tlang: wantTlang }, 20000);
+        if (r.rateLimited) rateLimited = true;
+        if (r.ok) log(`caption body: re-fetched a URL the player used (${r.body.length} chars)`);
+        else if (r.error || r.candidates || r.urls) log(`re-fetch of known URLs: ${r.error || "no body"}; known timedtext URLs: ${r.urls ?? "?"}, matching with pot: ${r.candidates ?? "?"}`, (r.tries || []).join(" | "));
+        return r.ok ? r.body : null;
+      };
+      if (!body) body = await fetchKnown();
+
+      // 3) ask the player to load the track and take its response (hooks or Resource Timing).
+      //    Switching captions off first makes the player request it even if this exact track
+      //    is already selected (otherwise it serves it from memory and nothing is fetched).
+      //    A 429 answer is final for this attempt: asking again only prolongs the block.
+      if (!body && !rateLimited) {
+        const wasOn = !!ct.current.languageCode;
+        let seq = already.seq || 0;
+        for (let attempt = 0; attempt < 3 && !body && !rateLimited && !this.destroyed; attempt++) {
+          await page("hideCaptions");
+          await new Promise((res) => setTimeout(res, 300));
+          const r = await page("setCaptionTrack", { languageCode: wantLang, kind: wantKind, translationLanguage: wantTlang });
+          if (!r.ok) throw new Error(r.error);
+          const deadline = Date.now() + (attempt === 0 ? 10000 : 8000);   // a long auto-translated track can take a while
+          let lastKnown = Date.now();
+          while (Date.now() < deadline && !body && !rateLimited && !this.destroyed) {
+            await new Promise((res) => setTimeout(res, 200));
+            const got = await page("capturedTimedtext", { afterSeq: seq });
+            if (got.error) log(`bridge: ${got.error}`);
+            seq = got.seq || seq;
+            for (const c of got.items || []) log(`player fetched: ${describeUrl(c.url)} HTTP ${c.status ?? "?"} ${c.body.length} chars${matches(c.url) ? " (wanted)" : " (other)"}`);
+            const m = (got.items || []).filter(usable).pop();
+            if (m) { body = m.body; log("caption body: captured after selecting the track"); break; }
+            if (Date.now() - lastKnown > 1500) { lastKnown = Date.now(); body = await fetchKnown(); }
+          }
+          // 4) last resort: the URL sniffed by the service worker (webRequest)
+          if (!body && !rateLimited) body = await this.refetchSniffed(wantLang, wantKind, wantTlang);
+          if (!body) log(`no caption body yet (attempt ${attempt + 1})${rateLimited ? " - YouTube answered HTTP 429 (too many requests)" : ", retrying"}`);
+        }
+        // Leave the captions as the user had them: hidden, or their previous track.
+        if (!wasOn) page("hideCaptions");
+        else page("setCaptionTrack", { languageCode: ct.current.languageCode, kind: ct.current.kind, translationLanguage: ct.current.translationLanguage });
+      }
+      return { body, rateLimited };
+    }
+
     /** Fallback: re-fetch the URL the player used, if it carries a proof-of-origin token. */
     async refetchSniffed(lang, kind, tlang) {
       const entry = await chrome.runtime.sendMessage({ type: "get_timedtext" });
-      if (!entry) return null;
+      if (!entry) { log("service worker saw no timedtext request for this tab"); return null; }
+      log(`service worker saw: ${describeUrl(entry.url)}`);
       let u;
       try { u = new URL(entry.url); } catch { return null; }
       const q = u.searchParams;
@@ -335,7 +387,7 @@
       try {
         const r = await fetch(u.toString(), { headers: entry.headers, credentials: "include" });
         const text = await r.text();
-        if (!r.ok || text.length < 20) { log(`re-fetch gave HTTP ${r.status}, ${text.length} bytes`); return null; }
+        if (!r.ok || text.length < 20) { log(`sniffed re-fetch gave HTTP ${r.status}, ${text.length} bytes`); return null; }
         return text;
       } catch (e) {
         warn("re-fetch failed:", e.message);
@@ -377,7 +429,7 @@
           sourceLang: this.srcLang || "auto",
           contextBefore: this.sentences.slice(Math.max(0, first - 3), first).map((s) => s.pl || s.text),
           contextAfter: this.sentences.slice(last + 1, last + 4).map((s) => s.text),
-          translator: settings.translator,
+          translator: this.translatorOverride || settings.translator,
           targetLang: this.targetLang,
         });
         res.translations.forEach((t, k) => { this.sentences[batch[k]].pl = t; });
@@ -388,7 +440,12 @@
         if (this.destroyed) return;
         this.translateFailures++;
         warn(`translation failed (${this.translateFailures}):`, e.message);
-        this.lastError = t("err.translation", { error: e.message });
+        this.lastError = /translator not configured: google/.test(e.message) ? t("err.serverNoGoogle") : t("err.translation", { error: e.message });
+        if (this.translateFailures >= 2 && this.translatorOverride) {
+          // already the fallback for a refused YouTube translation - nothing left to switch to
+          this.fail(this.lastError);
+          return;
+        }
         if (this.translateFailures >= 2) {
           // Reading the untranslated text aloud would be useless - switch this video to
           // YouTube's auto-translate instead and say so in the button tooltip / popup.
@@ -664,6 +721,19 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === "restart") { restartSession(); sendResponse({ ok: true }); return false; }
+    if (msg?.type === "get_log") {
+      const m = chrome.runtime.getManifest();
+      const head = [
+        `PolarnikTTS ${m.version} diagnostic log`,
+        `page: ${location.href}`,
+        `browser: ${navigator.userAgent}`,
+        `settings: enabled=${settings.enabled} uiLang=${settings.uiLang} targetLang=${settings.targetLang}->${targetLang()} translator=${settings.translator || "-"} engine=${settings.engine || "default"} voice=${settings.voice || "default"} server=${settings.serverUrl}`,
+        `session: ${session ? `${session.status} mode=${session.mode || "-"} sentences=${session.sentences?.length || 0} error=${session.lastError || "-"}` : "none"}`,
+        "----",
+      ];
+      sendResponse({ text: head.concat(LOG).join("\n") });
+      return false;
+    }
     if (msg?.type === "page_info") {
       sendResponse({
         videoId: currentVideoId(),
@@ -680,6 +750,6 @@
     return false;
   });
 
-  log("content script loaded");
+  log(`content script loaded (PolarnikTTS ${chrome.runtime.getManifest().version})`);
   onNavigate();
 })();

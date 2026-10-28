@@ -54,11 +54,18 @@
   "status.nocaptions": "ten film nie ma napisów",
   "status.error": "błąd – {error}",
   "err.noCaptionBody": "YouTube nie zwrócił treści napisów (spróbuj odświeżyć stronę)",
+  "err.rateLimited": "YouTube chwilowo blokuje pobieranie napisów (HTTP 429 – za dużo zapytań). Spróbuj za kilka–kilkanaście minut",
+  "err.serverNoGoogle": "serwer jest za stary na zastępcze tłumaczenie Google – zaktualizuj go (update.cmd) do wersji 0.4.2",
   "err.captionFormat": "nieznany format napisów",
   "err.translation": "tłumaczenie: {error}",
   "err.serverDown": "serwer niedostępny (otwórz panel P → Uruchom serwer)",
   "notice.translatorFallback": "tłumacz „{translator}” nie działa ({error}) – ten film leci przez tłumaczenie YouTube",
+  "notice.youtubeRateLimited": "YouTube chwilowo odmawia tłumaczenia napisów (HTTP 429 – za dużo zapytań), więc tłumaczy Google Translate przez serwer",
+  "notice.youtubeTranslateFailed": "YouTube nie przysłał tłumaczenia napisów, więc tłumaczy Google Translate przez serwer",
 
+  "popup.copyLog": "Kopiuj log",
+  "popup.copyLogHint": "Kopiuje do schowka dziennik diagnostyczny tej karty – wklej go w zgłoszeniu błędu",
+  "popup.logCopied": "skopiowano do schowka",
   "popup.enabled": "Lektor włączony",
   "popup.server": "Serwer",
   "popup.captions": "Napisy na tej karcie",
@@ -265,5 +272,6 @@
   "translator.gemini": "Google Gemini – chmura, klucz API",
   "translator.ollama": "Ollama – lokalny LLM (np. Bielik, Gemma), bez klucza",
   "translator.anthropic": "Anthropic Claude – chmura, klucz API",
+  "translator.google": "Google Translate – darmowy, bez klucza (zapasowy, gdy YouTube odmawia tłumaczenia)",
   "translator.deepl": "DeepL – chmura, klucz API (darmowy limit 500 tys. znaków/mies.)"
 }

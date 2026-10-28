@@ -68,6 +68,11 @@ engines:
 translators:
   default: youtube
 
+  # Built-in free Google Translate (no key). Used automatically when YouTube refuses its own
+  # auto-translation (HTTP 429); can also be picked as the translator. Uncomment to turn it off.
+  # google:
+  #   enabled: false
+
   openai:
     type: openai_compat
     enabled: false
