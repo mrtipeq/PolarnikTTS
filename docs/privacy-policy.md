@@ -1,6 +1,6 @@
 # PolarnikTTS – Privacy Policy / Polityka prywatności
 
-Last updated: 2026-09-23 · Author: MrTip (Tipson), https://tipson.pl
+Last updated: 2026-10-28 · Author: MrTip (Tipson), https://tipson.pl
 
 Published at https://tipson.pl/polarnik/privacy (the standalone page is `docs/privacy/index.html` - upload that folder as `polarnik/privacy/`).
 
@@ -25,11 +25,7 @@ another computer in your local network that you configure yourself).
 
 **Third-party services**
 
-The engine server can use third-party providers, but only those you enable yourself and only
-with API keys you enter yourself: Microsoft Edge TTS, OpenAI, Google Gemini, ElevenLabs, DeepL,
-Anthropic, or a local Ollama model. When enabled, subtitle sentences are sent to that provider
-under its own privacy policy. Uploaded voice samples stay on your computer in the server's
-`voices` folder.
+The engine server can use third-party services. Two of them work out of the box, without a key: **Microsoft Edge TTS** (the default voice) and **Google Translate** - the latter only when YouTube refuses its own auto-translation of the captions, or when you pick it as the translator. The others - OpenAI, Google Gemini, ElevenLabs, DeepL, Anthropic or a local Ollama model - are used only when you enable them yourself and enter your own API key. In every case the subtitle sentences go to that provider directly from your server, under its own privacy policy; the author of PolarnikTTS never sees them. Edge TTS and Google Translate can be turned off in the server's `config.yaml`. Uploaded voice samples stay on your computer in the server's `voices` folder.
 
 **Contact**
 
@@ -56,11 +52,7 @@ na innym komputerze w swojej sieci lokalnej, który sam wskażesz).
 
 **Usługi zewnętrzne**
 
-Serwer silników może korzystać z usług zewnętrznych, ale wyłącznie tych, które sam włączysz i
-z kluczami, które sam wpiszesz: Microsoft Edge TTS, OpenAI, Google Gemini, ElevenLabs, DeepL,
-Anthropic albo lokalny model Ollama. Wtedy zdania napisów trafiają do tego dostawcy na zasadach
-jego polityki prywatności. Przesłane próbki głosu pozostają na Twoim komputerze w katalogu
-`voices` serwera.
+Serwer silników może korzystać z usług zewnętrznych. Dwie z nich działają od razu, bez klucza: **Microsoft Edge TTS** (domyślny głos lektora) oraz **Google Translate** – ten drugi tylko wtedy, gdy YouTube odmówi własnego automatycznego tłumaczenia napisów albo gdy sam wybierzesz go jako tłumacza. Pozostałe – OpenAI, Google Gemini, ElevenLabs, DeepL, Anthropic albo lokalny model Ollama – działają wyłącznie wtedy, gdy sam je włączysz i wpiszesz własny klucz API. W każdym z tych przypadków zdania napisów trafiają do danego dostawcy prosto z Twojego serwera, na zasadach jego polityki prywatności; autor PolarnikTTS ich nie widzi. Edge TTS i Google Translate można wyłączyć w `config.yaml` serwera. Przesłane próbki głosu pozostają na Twoim komputerze w katalogu `voices` serwera.
 
 **Kontakt**
 
