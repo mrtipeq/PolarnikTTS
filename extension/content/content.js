@@ -21,9 +21,39 @@
     }).join(" ");
     LOG.push(`${new Date().toISOString().slice(11, 23)} +${((Date.now() - t0) / 1000).toFixed(1)}s ${level} ${text}`);
     while (LOG.length > 400) LOG.shift();
+    persistLogSoon();
+  }
+  // The log is also kept in chrome.storage.local (last few YouTube tabs), so the options page
+  // can show it even when the tab cannot be reached any more (closed, extension reloaded).
+  const PAGE_ID = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  let persistTimer = null;
+  function persistLogSoon() {
+    if (persistTimer) return;
+    persistTimer = setTimeout(async () => {
+      persistTimer = null;
+      try {
+        const { diagLogs = {} } = await chrome.storage.local.get("diagLogs");
+        diagLogs[PAGE_ID] = { updated: Date.now(), url: location.href, title: document.title, text: logText() };
+        const keep = Object.entries(diagLogs).sort((a, b) => b[1].updated - a[1].updated).slice(0, 5);
+        await chrome.storage.local.set({ diagLogs: Object.fromEntries(keep) });
+      } catch { /* extension reloaded - this tab is orphaned */ }
+    }, 1500);
   }
   const log = (...a) => { remember("INFO", a); console.info(TAG, ...a); };
   const warn = (...a) => { remember("WARN", a); console.warn(TAG, ...a); };
+  function logText() {
+    const m = chrome.runtime.getManifest();
+    const head = [
+      `PolarnikTTS ${m.version} diagnostic log`,
+      `page: ${location.href}`,
+      `browser: ${navigator.userAgent}`,
+      `settings: enabled=${settings?.enabled} uiLang=${settings?.uiLang} targetLang=${settings?.targetLang} translator=${settings?.translator || "-"} engine=${settings?.engine || "default"} voice=${settings?.voice || "default"} server=${settings?.serverUrl}`,
+      `session: ${session ? `${session.status} mode=${session.mode || "-"} translator=${session.translatorOverride || settings?.translator || "-"} sentences=${session.sentences?.length || 0} cursor=${session.cursor || 0} error=${session.lastError || "-"}` : "none"}`,
+      `video time: ${(() => { const v = document.querySelector("video.html5-main-video"); return v ? v.currentTime.toFixed(1) + " s" : "-"; })()}`,
+      "----",
+    ];
+    return head.concat(LOG).join("\n");
+  }
   /** Short description of a timedtext URL for the log (no tokens). */
   const describeUrl = (url) => {
     try {
@@ -435,12 +465,18 @@
         res.translations.forEach((t, k) => { this.sentences[batch[k]].pl = t; });
         this.translatedCount += batch.length;
         this.translateFailures = 0;
-        log(`translated ${batch.length} sentences (${first}-${last}) in ${Math.round(performance.now() - t0)} ms`);
+        log(`translated ${batch.length} sentences (${first}-${last}) by ${res.translator || this.translatorOverride || settings.translator} in ${Math.round(performance.now() - t0)} ms: "${this.sentences[first].text.slice(0, 80)}" -> "${String(res.translations[0] || "").slice(0, 120)}"`);
       } catch (e) {
         if (this.destroyed) return;
         this.translateFailures++;
         warn(`translation failed (${this.translateFailures}):`, e.message);
-        this.lastError = /translator not configured: google/.test(e.message) ? t("err.serverNoGoogle") : t("err.translation", { error: e.message });
+        this.lastError = /translator not configured: google/.test(e.message) ? t("err.serverNoGoogle")
+          : /blocked (requests from this network|by Google)/i.test(e.message) ? t("err.googleBlocked")
+          : t("err.translation", { error: e.message });
+        if (this.translatorOverride && /blocked (requests from this network|by Google)/i.test(e.message)) {
+          this.fail(this.lastError);       // Google asks for a captcha: no point retrying
+          return;
+        }
         if (this.translateFailures >= 2 && this.translatorOverride) {
           // already the fallback for a refused YouTube translation - nothing left to switch to
           this.fail(this.lastError);
@@ -721,19 +757,7 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === "restart") { restartSession(); sendResponse({ ok: true }); return false; }
-    if (msg?.type === "get_log") {
-      const m = chrome.runtime.getManifest();
-      const head = [
-        `PolarnikTTS ${m.version} diagnostic log`,
-        `page: ${location.href}`,
-        `browser: ${navigator.userAgent}`,
-        `settings: enabled=${settings.enabled} uiLang=${settings.uiLang} targetLang=${settings.targetLang}->${targetLang()} translator=${settings.translator || "-"} engine=${settings.engine || "default"} voice=${settings.voice || "default"} server=${settings.serverUrl}`,
-        `session: ${session ? `${session.status} mode=${session.mode || "-"} sentences=${session.sentences?.length || 0} error=${session.lastError || "-"}` : "none"}`,
-        "----",
-      ];
-      sendResponse({ text: head.concat(LOG).join("\n") });
-      return false;
-    }
+    if (msg?.type === "get_log") { sendResponse({ text: logText() }); return false; }
     if (msg?.type === "page_info") {
       sendResponse({
         videoId: currentVideoId(),

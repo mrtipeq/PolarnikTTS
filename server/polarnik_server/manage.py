@@ -12,6 +12,7 @@ import importlib
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -62,6 +63,9 @@ class Job:
 
 JOBS: dict[str, Job] = {}
 _JOB_LOCK = threading.Lock()
+
+
+_SECRET_RE = re.compile(r"((?:api[_-]?key|token|authorization|key)[\"']?\s*[:=]\s*[\"']?(?:Bearer\s+)?)[A-Za-z0-9._\-]{12,}", re.I)
 
 
 # ---- config editing --------------------------------------------------------------------
@@ -510,6 +514,29 @@ def build_router(state) -> APIRouter:  # noqa: C901 - one place for all manageme
         reload_engines()
         ready = await asyncio.to_thread(lambda: [e for e, en in state.engines.items() if en.ensure_ready()[0]])
         return {"ok": True, "engines_ready": ready}
+
+    @router.get("/log")
+    async def server_log(request: Request, tail: int = 300) -> dict[str, Any]:
+        """Last lines of the server log and the launcher log, for the options page "Diagnostics"."""
+        guard(request)
+        tail = max(10, min(int(tail), 2000))
+        log_cfg = str((state.config.server or {}).get("log_file") or "logs/server.log")
+        files = {"server": state.config.resolve(log_cfg), "launcher": server_dir / "logs" / "host.log",
+                 "server_stderr": server_dir / "logs" / "server-stderr.log"}
+
+        def read_tail(path: Path) -> list[str]:
+            try:
+                with open(path, "rb") as fh:
+                    fh.seek(0, os.SEEK_END)
+                    size = fh.tell()
+                    fh.seek(max(0, size - 256 * 1024))
+                    lines = fh.read().decode("utf-8", errors="replace").splitlines()
+            except OSError:
+                return []
+            # keys are never logged, but strip anything that looks like one just in case
+            return [_SECRET_RE.sub(r"\1***", ln) for ln in lines[-tail:]]
+
+        return {"version": __version__, "files": {k: {"path": str(p), "lines": read_tail(p)} for k, p in files.items()}}
 
     @router.post("/shutdown")
     async def shutdown(request: Request) -> dict[str, Any]:

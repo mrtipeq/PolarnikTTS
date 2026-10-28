@@ -41,6 +41,7 @@ export class ServerClient {
   manageOllamaPull(model) { return this.postJson("/manage/ollama/pull", { model }); }
   manageConfig(section, id, values) { return this.postJson("/manage/config", { section, id, values }); }
   manageReload() { return this.postJson("/manage/reload", {}); }
+  manageLog(tail = 300) { return this.getJson(`/manage/log?tail=${tail}`); }
   manageShutdown() { return this.postJson("/manage/shutdown", {}); }
   manageSamples() { return this.getJson("/manage/samples"); }
   manageExport() { return this.getJson("/manage/export"); }

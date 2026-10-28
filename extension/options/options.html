@@ -148,6 +148,25 @@
     </div>
   </section>
 
+  <section id="diagnostics">
+    <h2 data-i18n="opt.diag">Diagnostics</h2>
+    <p class="muted" data-i18n="opt.diagHelp">Log of the voice-over on the last YouTube tabs and the end of the server log. When something does not work, press Copy (or Save as file) and paste it into the bug report. API keys are not included.</p>
+    <div class="row">
+      <label for="diagPick" data-i18n="opt.diagTab">Tab</label>
+      <div><select id="diagPick"></select></div>
+    </div>
+    <div class="row">
+      <label></label>
+      <div>
+        <button id="btnDiagRefresh" type="button" data-i18n="opt.diagRefresh">Refresh</button>
+        <button id="btnDiagCopy" type="button" data-i18n="opt.diagCopy">Copy</button>
+        <button id="btnDiagSave" type="button" data-i18n="opt.diagSave">Save as file</button>
+        <span id="diagStatus" class="status"></span>
+      </div>
+    </div>
+    <textarea id="diagText" readonly spellcheck="false" rows="16" style="font-family:ui-monospace,Consolas,monospace;font-size:11px;white-space:pre;overflow:auto"></textarea>
+  </section>
+
   <section id="about">
     <h2 data-i18n="opt.about">About</h2>
     <div class="about">

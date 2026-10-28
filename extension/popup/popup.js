@@ -74,12 +74,19 @@ async function init() {
   // Diagnostic log of the content script, copied to the clipboard for a bug report
   $("logRow").hidden = false;
   $("btnLog").addEventListener("click", async () => {
+    let text = "";
+    try { text = (await chrome.tabs.sendMessage(tab.id, { type: "get_log" }))?.text || ""; } catch { /* tab not reachable */ }
+    if (!text) {
+      const { diagLogs = {} } = await chrome.storage.local.get("diagLogs");
+      text = Object.values(diagLogs).sort((a, b) => b.updated - a.updated)[0]?.text || "";
+    }
     try {
-      const r = await chrome.tabs.sendMessage(tab.id, { type: "get_log" });
-      await navigator.clipboard.writeText(r?.text || "(empty)");
+      if (!text) throw new Error("no log");
+      await navigator.clipboard.writeText(text);
       $("logText").textContent = t("popup.logCopied");
-    } catch (e) {
-      $("logText").textContent = t("popup.refreshTab");
+    } catch {
+      // clipboard refused (popup lost focus) or no log here: the options page has the full view
+      chrome.tabs.create({ url: chrome.runtime.getURL("options/options.html#diagnostics") });
     }
   });
 

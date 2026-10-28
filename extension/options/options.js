@@ -320,6 +320,50 @@ function fillLanguagePickers() {
   });
 }
 
+// ---- diagnostics: extension log of recent YouTube tabs + server log tail ----
+async function loadDiagnostics() {
+  setStatus($("diagStatus"), t("opt.connecting"));
+  const { diagLogs = {} } = await chrome.storage.local.get("diagLogs");
+  const entries = Object.entries(diagLogs).sort((a, b) => b[1].updated - a[1].updated);
+  const pick = $("diagPick");
+  const keep = pick.value;
+  pick.innerHTML = "";
+  for (const [id, e] of entries) {
+    const when = new Date(e.updated).toLocaleTimeString();
+    pick.appendChild(new Option(`${when} – ${(e.title || e.url).replace(/ - YouTube$/, "").slice(0, 70)}`, id));
+  }
+  if (!entries.length) pick.appendChild(new Option(t("opt.diagNone"), ""));
+  if (keep && diagLogs[keep]) pick.value = keep;
+  const ext = diagLogs[pick.value]?.text || t("opt.diagNone");
+  let srv = "";
+  try {
+    const client = new ServerClient($("serverUrl").value.trim() || settings.serverUrl, $("serverToken").value);
+    const r = await client.manageLog(200);
+    srv = Object.entries(r.files).map(([name, f]) => `==== ${name}: ${f.path}\n${f.lines.join("\n") || "(empty)"}`).join("\n\n");
+    srv = `PolarnikTTS server ${r.version}\n${srv}`;
+  } catch (e) {
+    srv = `server log unavailable: ${e.message}`;
+  }
+  $("diagText").value = `${ext}\n\n==================== SERVER ====================\n${srv}\n`;
+  setStatus($("diagStatus"), "");
+}
+
+async function copyText(text, textarea) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fall back below */ }
+  try {
+    textarea.focus(); textarea.select();
+    return document.execCommand("copy");
+  } catch { return false; }
+}
+
+function saveText(text, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
 async function init() {
   settings = await loadSettings();
   t = await initI18n(settings);
@@ -353,6 +397,14 @@ async function init() {
   $("btnTest").addEventListener("click", testVoice);
   $("btnTranslateTest").addEventListener("click", testTranslator);
   $("btnSave").addEventListener("click", save);
+  $("btnDiagRefresh").addEventListener("click", loadDiagnostics);
+  $("diagPick").addEventListener("change", loadDiagnostics);
+  $("btnDiagCopy").addEventListener("click", async () => {
+    const ok = await copyText($("diagText").value, $("diagText"));
+    setStatus($("diagStatus"), ok ? t("popup.logCopied") : t("opt.diagCopyFailed"), ok ? "ok" : "err");
+  });
+  $("btnDiagSave").addEventListener("click", () => saveText($("diagText").value, `PolarnikTTS-log-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.txt`));
+  loadDiagnostics();
   // Preselect stored values even before connecting.
   if (settings.engine) $("engine").insertAdjacentHTML("beforeend", `<option value="${settings.engine}" selected>${settings.engine}</option>`);
   if (settings.voice) $("voice").insertAdjacentHTML("beforeend", `<option value="${settings.voice}" selected>${settings.voice}</option>`);
