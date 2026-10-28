@@ -22,11 +22,31 @@
     window.postMessage({ __polarnik: "timedtext", url: String(url), seq: capturedSeq }, "*");
   }
 
+  // Every timedtext URL the page requests, also those our hooks do not see (made before them,
+  // from a worker, ...). A PerformanceObserver keeps reporting after the page's Resource
+  // Timing buffer (250 entries, full within minutes on YouTube) has filled up.
+  const seenUrls = [];
+  function rememberUrl(url) {
+    if (!url || !url.includes("/api/timedtext") || seenUrls.includes(url)) return;
+    seenUrls.push(url);
+    while (seenUrls.length > 40) seenUrls.shift();
+  }
+  try {
+    new PerformanceObserver((list) => { for (const e of list.getEntries()) rememberUrl(e.name); })
+      .observe({ type: "resource", buffered: true });
+  } catch { /* ignore */ }
+  const knownUrls = () => {
+    const out = captured.map((c) => c.url).concat(seenUrls);
+    try { for (const e of performance.getEntriesByType("resource")) if (e.name.includes("/api/timedtext")) out.push(e.name); } catch { /* ignore */ }
+    return out;
+  };
+
   const origFetch = window.fetch;
   window.fetch = function (input, init) {
-    const url = typeof input === "string" ? input : input?.url;
+    const url = typeof input === "string" ? input : (input?.url || input?.href);
     const p = origFetch.apply(this, arguments);
     if (url && url.includes("/api/timedtext")) {
+      rememberUrl(String(url));
       p.then((res) => { try { res.clone().text().then((t) => forward(url, t)).catch(() => {}); } catch { /* ignore */ } })
         .catch(() => {});
     }
@@ -41,8 +61,15 @@
   };
   XMLHttpRequest.prototype.send = function () {
     if (this.__polarnikUrl && this.__polarnikUrl.includes("/api/timedtext")) {
+      rememberUrl(this.__polarnikUrl);
       this.addEventListener("load", () => {
-        try { if (this.responseType === "" || this.responseType === "text") forward(this.__polarnikUrl, this.responseText); } catch { /* ignore */ }
+        try {
+          const rt = this.responseType;
+          if (rt === "" || rt === "text") forward(this.__polarnikUrl, this.responseText);
+          else if (rt === "json") forward(this.__polarnikUrl, JSON.stringify(this.response));
+          else if (rt === "arraybuffer" && this.response) forward(this.__polarnikUrl, new TextDecoder().decode(this.response));
+          else if (rt === "blob" && this.response) this.response.text().then((t) => forward(this.__polarnikUrl, t)).catch(() => {});
+        } catch { /* ignore */ }
       });
     }
     return origSend.apply(this, arguments);
@@ -55,7 +82,7 @@
       if (!p) return { ready: false };
       let videoId = null;
       try { videoId = p.getVideoData()?.video_id || null; } catch { /* ignore */ }
-      return { ready: true, videoId };
+      return { ready: true, videoId, ad: p.classList.contains("ad-showing") };
     },
 
     // Load the captions module and list the available tracks plus the one currently shown.
@@ -93,8 +120,9 @@
           add(t.languageCode || t.language_code || v?.languageCode, t.kind || v?.kind, t.displayName || t.languageName || t.name, "module");
         };
         const moduleLists = [];
-        try { moduleLists.push(p.getOption("captions", "tracklist", { includeAsr: true }) || []); } catch { /* ignore */ }
-        try { moduleLists.push(p.getOption("captions", "tracklist") || []); } catch { /* ignore */ }
+        const ad = p.classList.contains("ad-showing");   // during an ad the captions module describes the ad
+        if (!ad) try { moduleLists.push(p.getOption("captions", "tracklist", { includeAsr: true }) || []); } catch { /* ignore */ }
+        if (!ad) try { moduleLists.push(p.getOption("captions", "tracklist") || []); } catch { /* ignore */ }
         for (const list of moduleLists) for (const t of list) { diag.module++; addModuleTrack(t); }
 
         const addResponseTracks = (pr, source) => {
@@ -125,15 +153,12 @@
             add(q.get("lang"), q.get("kind") || "", "", "request");
           } catch { /* ignore */ }
         };
-        for (const c of captured) addFromUrl(c.url);
-        try {
-          for (const e of performance.getEntriesByType("resource")) if (e.name.includes("/api/timedtext")) addFromUrl(e.name);
-        } catch { /* ignore */ }
+        for (const u of knownUrls()) addFromUrl(u);
 
         let current = {};
         try { current = p.getOption("captions", "track") || {}; } catch { /* ignore */ }
         return {
-          ok: true, videoId, tracks, diag,
+          ok: true, videoId, tracks, diag, ad,
           current: {
             languageCode: current.languageCode || "", kind: current.kind || "",
             translationLanguage: current.translationLanguage?.languageCode || "",
@@ -159,6 +184,39 @@
       }
     },
 
+    // Fetch a caption track ourselves, from a timedtext URL the player has already used for
+    // this video (it carries the proof-of-origin token "pot", without which YouTube answers
+    // with an empty body). Works even when the player made the request before our hooks or
+    // in a way they do not see: the URL is also taken from the Resource Timing list. A URL of
+    // the same track with another translation is adapted (tlang added / removed).
+    async fetchTimedtext({ videoId, lang, kind, tlang }) {
+      const urls = knownUrls();
+      const candidates = [];
+      for (const raw of urls.reverse()) {
+        let u;
+        try { u = new URL(raw, location.origin); } catch { continue; }
+        const q = u.searchParams;
+        if (!q.get("pot") || (videoId && q.get("v") !== videoId)) continue;
+        if ((q.get("lang") || "") !== lang || (q.get("kind") || "") !== (kind || "")) continue;
+        const exact = (q.get("tlang") || "") === (tlang || "");
+        if (tlang) q.set("tlang", tlang); else q.delete("tlang");
+        q.set("fmt", "json3");
+        candidates.push({ url: u.toString(), exact });
+      }
+      candidates.sort((a, b) => Number(b.exact) - Number(a.exact));
+      const tried = new Set();
+      for (const c of candidates) {
+        if (tried.has(c.url)) continue;
+        tried.add(c.url);
+        try {
+          const r = await origFetch(c.url, { credentials: "include" });
+          const body = await r.text();
+          if (r.ok && body.length >= 20) return { ok: true, body, url: c.url, candidates: candidates.length };
+        } catch { /* try the next one */ }
+      }
+      return { ok: false, candidates: candidates.length };
+    },
+
     // Captured timedtext responses newer than `afterSeq` (bodies included).
     capturedTimedtext({ afterSeq }) {
       return { items: captured.filter((c) => c.seq > (afterSeq || 0)), seq: capturedSeq };
@@ -178,12 +236,9 @@
   window.addEventListener("message", (ev) => {
     if (ev.source !== window || !ev.data || ev.data.__polarnik !== "req") return;
     const { id, cmd, args } = ev.data;
-    let result;
-    try {
-      result = handlers[cmd] ? handlers[cmd](args || {}) : { error: `unknown cmd ${cmd}` };
-    } catch (e) {
-      result = { error: String(e) };
-    }
-    window.postMessage({ __polarnik: "resp", id, result }, "*");
+    Promise.resolve()
+      .then(() => (handlers[cmd] ? handlers[cmd](args || {}) : { error: `unknown cmd ${cmd}` }))
+      .catch((e) => ({ error: String(e) }))
+      .then((result) => window.postMessage({ __polarnik: "resp", id, result }, "*"));
   });
 })();

@@ -22,12 +22,12 @@
     const p = pending.get(ev.data.id);
     if (p) { pending.delete(ev.data.id); p(ev.data.result); }
   });
-  function page(cmd, args = {}) {
+  function page(cmd, args = {}, timeoutMs = 3000) {
     return new Promise((resolve) => {
       const id = ++reqId;
       pending.set(id, resolve);
       window.postMessage({ __polarnik: "req", id, cmd, args }, "*");
-      setTimeout(() => { if (pending.delete(id)) resolve({ error: "page bridge timeout" }); }, 3000);
+      setTimeout(() => { if (pending.delete(id)) resolve({ error: "page bridge timeout" }); }, timeoutMs);
     });
   }
 
@@ -217,8 +217,14 @@
     /** Choose a track, have the player load it, capture the player's own response (or, as
      *  a fallback, re-fetch a sniffed URL that carries a proof-of-origin token). */
     async loadCaptions() {
-      const info = await page("playerInfo");
+      let info = await page("playerInfo");
       if (!info.ready) throw new Error("player not ready");
+      // During a pre-roll ad the player (captions module, setOption) belongs to the ad: wait
+      for (let i = 0; info.ad && i < 600 && !this.destroyed; i++) {
+        if (i === 0) log("ad is playing - waiting for the video");
+        await new Promise((res) => setTimeout(res, 500));
+        info = await page("playerInfo");
+      }
       // Right after navigation (and in a tab opened in the background, where YouTube defers
       // loading the player) the caption list can stay empty for a while. Poll for up to
       // ~12 s of *visible* time before concluding the video has no captions; the session
@@ -259,32 +265,45 @@
         } catch { return false; }
       };
 
-      // 1) maybe the player already loaded exactly this track
+      // 1) maybe the player already loaded exactly this track (captured by page.js hooks)
       let body = null;
       const already = await page("capturedTimedtext", { afterSeq: 0 });
       const hit = (already.items || []).filter((c) => matches(c.url)).pop();
-      if (hit) body = hit.body;
+      if (hit) { body = hit.body; log("caption body: captured from the player"); }
 
-      // 2) ask the player to load it and wait for the captured response
+      // 2) re-fetch a timedtext URL the player already used for this track (any translation):
+      //    it carries the pot token, so YouTube answers with the real text
+      const fetchKnown = async () => {
+        const r = await page("fetchTimedtext", { videoId: this.videoId, lang: wantLang, kind: wantKind, tlang: wantTlang }, 20000);
+        if (r.ok) log(`caption body: re-fetched a URL the player used (${r.body.length} chars)`);
+        return r.ok ? r.body : null;
+      };
+      if (!body) body = await fetchKnown();
+
+      // 3) ask the player to load the track and take its response (hooks or Resource Timing).
+      //    Switching captions off first makes the player request it even if this exact track
+      //    is already selected (otherwise it serves it from memory and nothing is fetched).
       if (!body) {
         const wasOn = !!ct.current.languageCode;
         let seq = already.seq || 0;
         for (let attempt = 0; attempt < 3 && !body && !this.destroyed; attempt++) {
+          await page("hideCaptions");
+          await new Promise((res) => setTimeout(res, 300));
           const r = await page("setCaptionTrack", { languageCode: wantLang, kind: wantKind, translationLanguage: wantTlang });
           if (!r.ok) throw new Error(r.error);
-          const deadline = Date.now() + (attempt === 0 ? 4000 : 2500);
+          const deadline = Date.now() + (attempt === 0 ? 10000 : 8000);   // a long auto-translated track can take a while
+          let lastKnown = 0;
           while (Date.now() < deadline && !body && !this.destroyed) {
-            await new Promise((res) => setTimeout(res, 150));
+            await new Promise((res) => setTimeout(res, 200));
             const got = await page("capturedTimedtext", { afterSeq: seq });
             seq = got.seq || seq;
             const m = (got.items || []).filter((c) => matches(c.url)).pop();
-            if (m) body = m.body;
+            if (m) { body = m.body; log("caption body: captured after selecting the track"); break; }
+            if (Date.now() - lastKnown > 1000) { lastKnown = Date.now(); body = await fetchKnown(); }
           }
-          if (!body) {
-            // 3) fallback: re-fetch a sniffed URL, but only one that carries a pot token
-            body = await this.refetchSniffed(wantLang, wantKind, wantTlang);
-          }
-          if (!body) { log(`no caption body yet (attempt ${attempt + 1}), retrying`); page("hideCaptions"); await new Promise((res) => setTimeout(res, 400)); }
+          // 4) last resort: the URL sniffed by the service worker (webRequest)
+          if (!body) body = await this.refetchSniffed(wantLang, wantKind, wantTlang);
+          if (!body) log(`no caption body yet (attempt ${attempt + 1}), retrying`);
         }
         // Leave the captions as the user had them: hidden, or their previous track.
         if (!wasOn) page("hideCaptions");
