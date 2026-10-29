@@ -214,7 +214,7 @@ async function startServer() {
     if (resp?.ok && resp.running) {
       await connect(false);
     } else if (resp?.hostMissing) {
-      setStatus($("serverStatus"), t("common.hostMissing"), "err");
+      setStatus($("serverStatus"), t(resp?.os && resp.os !== "win" ? "common.hostMissingUnix" : "common.hostMissing"), "err");
     } else {
       setStatus($("serverStatus"), t("common.failed", { error: resp?.error || "?" }), "err");
     }
@@ -252,12 +252,21 @@ async function testVoice() {
 
 async function testTranslator() {
   const client = lastClient || new ServerClient($("serverUrl").value.trim() || "http://127.0.0.1:8765", $("serverToken").value);
-  const translator = $("translator").value;
+  let translator = $("translator").value;
   const out = $("translateTestResult");
   out.classList.add("hidden");
+  let prefix = "";
   if (translator === "youtube") {
-    setStatus($("translateTestStatus"), t("opt.youtubeNotTestable"), "");
-    return;
+    // YouTube's own translation runs in the player and cannot be tested here - test the
+    // translator the voice-over switches to when YouTube refuses (same order as content.js)
+    const order = ["deepl", "gemini", "openai", "anthropic", "ollama"];
+    try {
+      const { items = [] } = await client.translators();
+      const ready = items.filter((x) => x.ready && x.id !== "youtube" && x.id !== "google")
+        .sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99));
+      translator = ready[0]?.id || "google";
+    } catch { translator = "google"; }
+    prefix = `${t("opt.youtubeFallbackTest", { translator })} `;
   }
   const text = $("translateTestText").value.trim();
   if (!text) { setStatus($("translateTestStatus"), t("opt.enterSentence"), "err"); return; }
@@ -269,9 +278,9 @@ async function testTranslator() {
     const ms = Math.round(performance.now() - t0);
     out.textContent = res.translations[0] || t("opt.emptyReply");
     out.classList.remove("hidden");
-    setStatus($("translateTestStatus"), `${res.translator}: ${ms} ms${ms > 8000 ? ` – ${t("opt.slowTranslator")}` : ""}`, ms > 8000 ? "" : "ok");
+    setStatus($("translateTestStatus"), `${prefix}${res.translator}: ${ms} ms${ms > 8000 ? ` – ${t("opt.slowTranslator")}` : ""}`, ms > 8000 ? "" : "ok");
   } catch (e) {
-    setStatus($("translateTestStatus"), t("common.error", { error: e.message }), "err");
+    setStatus($("translateTestStatus"), prefix + t("common.error", { error: e.message }), "err");
   } finally {
     $("btnTranslateTest").disabled = false;
   }

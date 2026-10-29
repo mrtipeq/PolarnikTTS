@@ -210,6 +210,14 @@ the options page has an **Aktualizuj edge-tts** button for that.
 
 ### Linux / macOS
 
+Without a terminal: open the PolarnikTTS folder in the file manager and double-click
+**Install PolarnikTTS** (on GNOME first right-click it and choose *Allow Launching*). A terminal
+window shows the progress and says when it is done; then press **Start server** in the extension.
+**Start PolarnikTTS server** runs the server in a window the same way. If Python is missing, the
+installer prints the exact command for your distribution (e.g. `sudo apt install python3-venv`).
+Chromium installed as Snap or Flatpak cannot start the server by itself (no native messaging) -
+use Google Chrome from the .deb/.rpm package, or start the server with the launcher above.
+
 ```bash
 ./install.sh                                    # edge-tts + piper
 EXTRAS=edge,piper,chatterbox CUDA=cu128 ./install.sh

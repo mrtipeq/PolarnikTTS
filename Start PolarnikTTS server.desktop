@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Start PolarnikTTS server
+Comment=Runs the PolarnikTTS engine server in this window
+Icon=audio-speakers
+Terminal=true
+Exec=bash -c 'cd "$(dirname "$1")" && bash ./run_server.sh; status=$?; echo; if [ $status -eq 0 ]; then echo "The server has stopped."; else echo "Something went wrong (exit code $status) - see the messages above."; fi; read -r -p "Press Enter to close this window..." _' _ %k

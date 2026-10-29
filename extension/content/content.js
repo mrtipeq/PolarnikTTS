@@ -311,9 +311,10 @@
         // the engine server translate it - with the built-in free Google Translate unless the
         // user has a server translator of their own.
         this.mode = "server";
-        this.translatorOverride = "google";
-        notice = t(got.rateLimited ? "notice.youtubeRateLimited" : "notice.youtubeTranslateFailed");
-        warn(`YouTube translation unavailable${got.rateLimited ? " (HTTP 429)" : ""} - using the original track and the server translator "google"`);
+        this.translatorOverride = await this.pickFallbackTranslator();
+        const trName = this.translatorOverride === "google" ? "Google Translate" : this.translatorOverride;
+        notice = t(got.rateLimited ? "notice.youtubeRateLimited" : "notice.youtubeTranslateFailed", { translator: trName });
+        warn(`YouTube translation unavailable${got.rateLimited ? " (HTTP 429)" : ""} - using the original track and the server translator "${this.translatorOverride}"`);
         got = await this.fetchTrackBody(ct, wantLang, wantKind, "");
       }
       if (this.destroyed) return null;
@@ -327,6 +328,21 @@
         if (isPolishLike(sample)) this.mode = "native";                       // mislabelled track
       }
       return events;
+    }
+
+    /** Translator to use when YouTube refuses its own translation: one the user set up with
+     *  their own key or a local model (they do not share the network's Google quota), and the
+     *  free built-in Google Translate only as the last resort. */
+    async pickFallbackTranslator() {
+      const order = ["deepl", "gemini", "openai", "anthropic", "ollama"];
+      try {
+        const { items = [] } = await this.client.translators();
+        const ready = items.filter((x) => x.ready && x.id !== "youtube" && x.id !== "google");
+        ready.sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99));
+        log("server translators ready:", items.filter((x) => x.ready).map((x) => x.id).join(", ") || "none");
+        if (ready.length) return ready[0].id;
+      } catch (e) { warn("could not list the server translators:", e.message); }
+      return "google";
     }
 
     /** Get the text of one caption track: what the player already loaded, a re-fetch of a URL

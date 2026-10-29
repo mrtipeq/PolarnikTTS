@@ -18,11 +18,27 @@ if [ -z "$PY" ]; then
     fi
   done
 fi
-[ -n "$PY" ] || { echo "Python 3.10+ not found"; exit 1; }
+if [ -z "$PY" ]; then
+  echo "Python 3.10 or newer was not found."
+  echo "  Ubuntu / Debian / Mint:  sudo apt install python3 python3-venv python3-pip"
+  echo "  Fedora:                  sudo dnf install python3"
+  echo "  Arch / Manjaro:          sudo pacman -S python"
+  echo "Install it and run the installer again."
+  exit 1
+fi
 echo "Using Python: $PY"
 
 VENV="$SERVER/.venv"
-[ -d "$VENV" ] || "$PY" -m venv "$VENV"
+if [ ! -x "$VENV/bin/python" ]; then
+  rm -rf "$VENV"
+  if ! "$PY" -m venv "$VENV"; then
+    echo
+    echo "Could not create a Python virtual environment - the venv module is missing."
+    echo "  Ubuntu / Debian / Mint:  sudo apt install python3-venv"
+    echo "Install it and run the installer again."
+    exit 1
+  fi
+fi
 VPY="$VENV/bin/python"
 "$VPY" -m pip install --upgrade pip wheel >/dev/null
 
@@ -65,7 +81,15 @@ for d in "$HOME/.config/google-chrome" "$HOME/.config/chromium" "$HOME/.config/m
   sed -e "s|__HOST_PATH__|$HOST_SH|" -e "s|__EXTENSION_ID__|$EXT_ID|" "$ROOT/host/pl.polarnik.launcher.json.template" \
     > "$d/NativeMessagingHosts/pl.polarnik.launcher.json"
   echo "Registered native messaging host in $d"
+  REGISTERED=1
 done
+if [ -z "${REGISTERED:-}" ]; then
+  echo
+  echo "WARNING: no Chrome / Chromium / Edge / Brave profile found in ~/.config - the extension"
+  echo "will not be able to start the server by itself. Start Chrome once and run the installer"
+  echo "again. (Chromium from Snap or Flatpak does not support this at all - use the .deb/.rpm"
+  echo "Google Chrome, or start the server with ./run_server.sh.)"
+fi
 
 echo
 echo "Done. Start the server with: ./run_server.sh"

@@ -62,7 +62,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (chrome.runtime.lastError) {
           const err = chrome.runtime.lastError.message || "";
           const missing = /not found|nie znaleziono/i.test(err);
-          sendResponse({ ok: false, hostMissing: missing, error: err });
+          // the hint differs per OS (install_host.cmd vs. the Linux/macOS installer)
+          chrome.runtime.getPlatformInfo().then((pi) => sendResponse({ ok: false, hostMissing: missing, os: pi.os, error: err }),
+            () => sendResponse({ ok: false, hostMissing: missing, error: err }));
         } else {
           sendResponse(resp || { ok: false, error: "empty reply from host" });
         }

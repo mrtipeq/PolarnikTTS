@@ -50,7 +50,7 @@ async function init() {
       $("serverText").textContent = t("popup.started");
       if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "restart" }).catch(() => {});
     } else {
-      $("startText").textContent = resp?.hostMissing ? t("common.hostMissing") : t("common.failed", { error: resp?.error || "?" });
+      $("startText").textContent = resp?.hostMissing ? t(resp?.os && resp.os !== "win" ? "common.hostMissingUnix" : "common.hostMissing") : t("common.failed", { error: resp?.error || "?" });
       $("btnStart").disabled = false;
     }
   });

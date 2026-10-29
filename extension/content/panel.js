@@ -200,7 +200,7 @@ export function createPanel({ container, getSettings, saveSettings, client, onCl
       onServerStarted?.();
     } else {
       serverMsg = resp?.hostMissing
-        ? t("common.hostMissing")
+        ? t(resp?.os && resp.os !== "win" ? "common.hostMissingUnix" : "common.hostMissing")
         : t("common.failed", { error: resp?.error || "?" });
       render();
       setTimeout(() => { serverMsg = ""; if (!root.hidden) render(); }, 6000);
