@@ -210,7 +210,18 @@ the options page has an **Aktualizuj edge-tts** button for that.
 
 ### Linux / macOS
 
-Without a terminal: open the PolarnikTTS folder in the file manager and double-click
+The easiest way is one line in a terminal (Ctrl+Alt+T), as your normal user - no `sudo`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mrtipeq/PolarnikTTS/main/install-linux.sh | bash
+```
+
+It downloads PolarnikTTS into `~/PolarnikTTS` (running it again updates it and keeps your
+`config.yaml`, voices and models), installs the server, registers the launcher in Chrome /
+Chromium and adds **PolarnikTTS server** to the applications menu. Restart Chrome afterwards.
+The options page shows the same command, with a Copy button, when the launcher is missing.
+
+From a downloaded zip without a terminal: open the PolarnikTTS folder in the file manager and double-click
 **Install PolarnikTTS** (on GNOME first right-click it and choose *Allow Launching*). A terminal
 window shows the progress and says when it is done; then press **Start server** in the extension.
 **Start PolarnikTTS server** runs the server in a window the same way. If Python is missing, the

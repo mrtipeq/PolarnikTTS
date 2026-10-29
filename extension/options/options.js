@@ -215,12 +215,32 @@ async function startServer() {
       await connect(false);
     } else if (resp?.hostMissing) {
       setStatus($("serverStatus"), t(resp?.os && resp.os !== "win" ? "common.hostMissingUnix" : "common.hostMissing"), "err");
+      if (resp?.os && resp.os !== "win") showUnixInstallHelp();
     } else {
       setStatus($("serverStatus"), t("common.failed", { error: resp?.error || "?" }), "err");
     }
   } finally {
     $("btnStart").disabled = false;
   }
+}
+
+// Linux/macOS without the launcher: the one-line installer, ready to copy into a terminal.
+const UNIX_INSTALL_CMD = "curl -fsSL https://raw.githubusercontent.com/mrtipeq/PolarnikTTS/main/install-linux.sh | bash";
+function showUnixInstallHelp() {
+  if ($("unixHelp")) return;
+  const box = document.createElement("div");
+  box.id = "unixHelp";
+  box.className = "note";
+  box.style.cssText = "margin-top:8px";
+  box.innerHTML = `<p class="muted"></p><div style="display:flex;gap:8px;align-items:center"><code style="flex:1;overflow-wrap:anywhere;padding:6px 8px;border:1px solid var(--line);border-radius:6px"></code><button type="button"></button></div>`;
+  box.querySelector("p").textContent = t("opt.unixInstallHelp");
+  box.querySelector("code").textContent = UNIX_INSTALL_CMD;
+  const b = box.querySelector("button");
+  b.textContent = t("opt.diagCopy");
+  b.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(UNIX_INSTALL_CMD); b.textContent = "✓"; } catch { /* user can select the text */ }
+  });
+  $("serverStatus").insertAdjacentElement("afterend", box);
 }
 
 let currentAudio = null;

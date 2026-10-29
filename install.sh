@@ -91,6 +91,28 @@ if [ -z "${REGISTERED:-}" ]; then
   echo "Google Chrome, or start the server with ./run_server.sh.)"
 fi
 
+# Make the helper scripts and the double-click launchers usable even when the files came
+# from a zip or a Windows disk that dropped the executable bits.
+chmod +x "$ROOT"/*.sh "$ROOT"/*.desktop 2>/dev/null || true
+if command -v gio >/dev/null 2>&1; then
+  for f in "$ROOT"/*.desktop; do gio set "$f" metadata::trusted true 2>/dev/null || true; done
+fi
+# Menu entry "PolarnikTTS server" (applications menu / search), with absolute paths
+APPS="$HOME/.local/share/applications"
+mkdir -p "$APPS"
+cat > "$APPS/polarniktts-server.desktop" <<DESK
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=PolarnikTTS server
+Comment=Runs the PolarnikTTS engine server (voice-over for YouTube)
+Icon=audio-speakers
+Terminal=true
+Exec=bash "$ROOT/run_server.sh"
+Categories=AudioVideo;Audio;
+DESK
+echo "Added \"PolarnikTTS server\" to the applications menu"
+
 echo
 echo "Done. Start the server with: ./run_server.sh"
 echo "Then load extension/ in Chrome: chrome://extensions -> Developer mode -> Load unpacked."
